@@ -4,6 +4,43 @@
 
 ---
 
+## 2026-08-15 (4) — 로드맵 계획 + M0 착수: git init + 렌더 검증 하네스 성공
+
+**계획**: 사용자 최종목표(방3+거실 집·사람캐릭터·외부에셋·마우스/키보드 인터랙션·BGM/효과음·호스팅)를 놓고 plan mode로 로드맵 수립. 결정 4축(3인칭 추적 카메라, 텍스처 실습 목적의 외부 캐릭터 에셋, sample1 방향 아트(그레인+색보정, 외곽선 제거), 집 구조 완성 시 공개) 확인 후 M0~M7 마일스톤 + 병렬화 레인(A이동/B카메라/C룩/D월드/E에셋오디오) 설계. 상세는 `C:\Users\hcyang\.claude\plans\tranquil-jingling-toast.md` 참고.
+
+**환경 재확인 — 이전 세션 기록 정정**:
+- 외부 네트워크 **열려 있음**(unpkg/jsdelivr/github raw/poly.pizza 전부 200) — "allowlist 차단" 기록은 이 세션에 한해 틀림
+- 사용자 Live Server(localhost:5500 등) 접근은 **불가** — 인터넷 차단이 아니라 사용자 PC와의 네트워크 격리였음이 확인됨
+- **Chrome·Edge 둘 다 이 환경에 이미 설치돼 있음**, Node 24.14.1/npm 11.11.0 정상
+- git 저장소 미초기화 상태였음 → `git init` 완료, 베이스라인 커밋(`60af3d1`) 생성
+
+**렌더 검증 하네스 — 성공**: `tools/render-check/`에 `puppeteer-core`(크로미움 다운로드 없이 로컬 Chrome exe를 `executablePath`로 지정) + Node 내장 `http` 정적 서버로 스크린샷/콘솔로그/HTTP 에러 캡처 스크립트(`shot.mjs`) 작성. `--use-gl=swiftshader` 플래그로 헤드리스에서도 WebGL 컨텍스트 생성 확인(`ANGLE ... Microsoft Basic Render Driver` — 소프트웨어 렌더링이지만 정상 렌더). 현재 방 씬을 스크린샷으로 확인 완료(책장·화분·러그·방석·외곽선 전부 정상). **이전 세션들이 전부 "샌드박스라 불가"로 기록했던 시각 검증 공백이 이번에 처음 닫혔다.** 이후 모든 마일스톤에서 이 스크립트로 자동 스크린샷 검증 후 사용자에게 이미지로 보고할 것.
+
+**부수 발견**: `game/glb/Cubone by Tipatat Chennavasin - cc7gCdKaQYU.glb` 존재 확인(사용자가 계획 논의 중 직접 추가). glTF JSON 파싱으로 사전검사한 결과 애니메이션 0·스킨 0(정적 메시), 압축 확장 없음(무압축), `TEXCOORD_0` 있음(텍스처 적용 가능), 재질명이 `mat11/mat13/mat18` 식 무의미. → 걷는 캐릭터로는 못 쓰고 텍스처 실습용으로 M3에 반영. 파일명의 공백+대문자는 itch.io 배포 시 404 나는 실제 리스크로 로드맵에 기록.
+
+**M0 진행 상태**: git init·렌더 하네스 완료. 다음: 애드온 11개 vendoring, main.js 모듈 분리, 외곽선 제거+flat shading 전환.
+
+---
+
+## 2026-08-15 (5) — M0 완료: vendoring · 모듈 분리 · 아트 방향 전환
+
+로드맵(`tranquil-jingling-toast.md`) M0 5개 작업 전부 완료. 매 단계 `tools/render-check/shot.mjs`(헤드리스 Chrome 스크린샷)와 `node --check`로 검증.
+
+1. **애드온 11개 vendoring**: `GLTFLoader`, `BufferGeometryUtils`, `SkeletonUtils`, `EffectComposer`/`Pass`/`ShaderPass`/`MaskPass`/`RenderPass`/`OutputPass`, `CopyShader`/`OutputShader`를 `vendor/jsm/`에 upstream `examples/jsm/` 구조 그대로 미러(three@0.185.0, r185와 동일). `OrbitControls.js`도 `vendor/jsm/controls/`로 이동. `index.html` importmap을 정확경로→접두어(`three/addons/`) 방식으로 전환. 상대 import 전수 검증 스크립트로 미해결 참조 0건 확인.
+2. **`main.js` → `src/` 모듈 분리**: `core/context.js`(renderer·scene·camera), `core/tags.js`(userData 태그 계약: solid/fadeable/interactive/roomId), `core/loop.js`(프레임 콜백 레지스트리), `render/materials.js`+`meshFactory.js`(`makeMesh` 5인자 시그니처 동결, 6번째 opts만 추가), `render/sky.js`, `render/lighting.js`, `world/rooms/livingRoom.js`(기존 방 전체를 기계적으로 이전). `main.js`는 40줄 부트스트랩으로 축소. 분리 전후 스크린샷 바이트 단위로 동일 — 완전 무손실 이전 확인.
+3. **외곽선 삭제 + flat shading 전환**: `render/outline.js`(인버티드 헐) 삭제, `materials.js`의 `LOOK.mode` 기본값을 `'toon'→'flat'`으로 전환(`MeshLambertMaterial({flatShading:true})`). 스크린샷으로 확인: 외곽선 사라짐, 이코사헤드론(화분)에서 면 분할 뚜렷하게 보임 — 로드맵 예측(박스는 안 변하고 실린더/이코사헤드론에서 차이남)과 일치.
+4. **`OrbitControls` 제거는 M1로 연기** — 로드맵 원문은 M0에서 완전 제거하라고 되어 있었으나, 대체할 3인칭 추적 카메라(M1)가 아직 없는 상태에서 지금 없애면 조작 수단이 통째로 사라진다. **계획과 다르게 판단한 지점**이라 명시적으로 기록: OrbitControls는 M1 착수 시점, 새 카메라 컨트롤러가 실제로 존재할 때 함께 교체한다.
+
+**부산물 — 새 dev 도구**:
+- `tools/render-check/shot.mjs` — 로컬 정적 서버 + `puppeteer-core`(다운로드 없이 시스템 Chrome exe 지정, `--use-gl=swiftshader`) 로 스크린샷+콘솔에러+HTTP 4xx/5xx 캡처. 이 게임 프로젝트 사상 처음으로 자동 시각 검증 확보.
+- `tools/check-imports.mjs` — importmap 파싱 후 `main.js`부터 재귀적으로 import를 따라가며 파일 존재 여부 + **디스크 대소문자 완전 일치**까지 검사(의도적으로 `sky.js`→`Sky.js` 오타를 주입해 정상 탐지 확인 후 원복). Windows에서는 안 터지고 itch.io(Linux) 배포 시에만 터지는 버그 클래스를 사전 차단.
+
+**git**: 베이스라인 커밋(`60af3d1`) 이후 이번 M0 작업을 별도 커밋으로 기록(커밋 메시지는 아래 diff 참고).
+
+**M0 상태: 완료.** 다음은 M1(수직 슬라이스 — 걸어다니는 방 1개: 캐릭터 스탠드인 + WASD + 추적 카메라 + 충돌).
+
+---
+
 ## 2026-08-15 (3) — 아이템 증식 1차: 소품 5종 추가
 
 **작업**: `game/main.js`에 상호작용 없는 순수 장식 오브젝트 5종 추가.
