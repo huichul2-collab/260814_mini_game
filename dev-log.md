@@ -4,6 +4,23 @@
 
 ---
 
+## 2026-08-15 (6) — GitHub push + Gemini 병렬 레인 2개 분기
+
+**GitHub push**: `git remote add origin https://github.com/huichul2-collab/260814_mini_game.git`, 로컬 브랜치 `master`→`main`(GitHub 기본값과 맞춤), 베이스라인+M0 커밋 2개 push 완료. Git Credential Manager에 이미 캐시된 자격증명(`huichul2-collab`)으로 인증 성공.
+
+**Gemini 병렬 레인 분기**: 로드맵(`tranquil-jingling-toast.md`) §3에서 설계한 5개 레인(A~E) 중, M1(이동/카메라, 임계경로)과 파일이 전혀 안 겹치는 **C(룩)**, **E(에셋/오디오)** 두 개를 `handoff-2026-08-15.md`가 제안했던 git 릴레이 방식으로 분기.
+
+- `docs/handoff/gemini-lane-c-look.md` — 후처리(그레인+색보정+비네트 단일 패스) + 안개 + 바깥 지형. r185 색공간 함정(`OutputPass` 순서), 그레인은 `gl_FragCoord` 기준 등 로드맵에서 이미 검증된 함정을 지시서에 그대로 이식.
+- `docs/handoff/gemini-lane-e-assets-audio.md` — GLTFLoader 래퍼 + restyle(KEEP/TINT/REPLACE) + normalize + 오디오(오토플레이 게이트 포함). `Cubone…glb`의 사전검사 결과(애니메이션 0·재질명 무의미)와 파일명 리스크(공백+대문자→itch.io 404)를 그대로 전달, `game/assets/glb/cubone.glb`로 개명·이동하는 것도 이 레인 작업 범위에 포함.
+
+두 지시서 모두: 건드려도 되는 파일/절대 안 되는 파일(다른 레인·통합자 소유) 명시, `tools/render-check`·`tools/check-imports.mjs` 사용법 포함(Gemini도 동일한 자동 시각검증 도구를 쓸 수 있게), `main.js`/`index.html`은 통합자(Claude)가 나중에 연결 — 각 레인은 독립 모듈만 완성.
+
+**브랜치**: `main`에 두 지시서 커밋 후 push. 그 지점에서 `gemini/lane-c-look`, `gemini/lane-e-assets-audio` 두 브랜치 생성해 push. 사용자가 Antigravity에서 각 브랜치를 체크아웃해 작업, 완료되면 Claude가 `main...브랜치` diff 리뷰 + 렌더/import 검증 후 merge하는 흐름.
+
+**Claude 쪽**: `main`에 남아 M1(이동/충돌/추적카메라, 임계경로) 계속 진행.
+
+---
+
 ## 2026-08-15 (4) — 로드맵 계획 + M0 착수: git init + 렌더 검증 하네스 성공
 
 **계획**: 사용자 최종목표(방3+거실 집·사람캐릭터·외부에셋·마우스/키보드 인터랙션·BGM/효과음·호스팅)를 놓고 plan mode로 로드맵 수립. 결정 4축(3인칭 추적 카메라, 텍스처 실습 목적의 외부 캐릭터 에셋, sample1 방향 아트(그레인+색보정, 외곽선 제거), 집 구조 완성 시 공개) 확인 후 M0~M7 마일스톤 + 병렬화 레인(A이동/B카메라/C룩/D월드/E에셋오디오) 설계. 상세는 `C:\Users\hcyang\.claude\plans\tranquil-jingling-toast.md` 참고.
