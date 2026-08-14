@@ -4,6 +4,27 @@
 
 ---
 
+## 2026-08-15 (7) — M1 착수 중 작업 디렉토리 공유 충돌 발견 → M1 일시 중단
+
+**M1(이동/충돌/추적카메라) 진행**: `main`에 순서대로 커밋+push 완료.
+- `physics/resolve.js`, `physics/colliders.js` — 원-AABB MTV 충돌(중심이 박스 내부인 경우 포함), `TAG.SOLID` 기반 콜라이더 레지스트리
+- `core/loop.js` — `Phase`(INPUT/SIM/POST_SIM/LATE) 순서 보장 추가. 미지정 시 SIM 기본값이라 기존 램프 애니메이션 호출부는 무수정으로 호환
+- `config/player.js`, `config/camera.js`, `player/input.js` — PLAYER/CAM 상수, WASD 키보드 상태
+
+**충돌 발견**: `core/loop.js`를 편집하던 중 파일이 M0 버전으로 되돌아가는 걸 발견. 조사 결과 **Lane C(룩) 작업 결과물이 통째로 유실됐다** — `render/post/`, `world/exterior.js`, `sky.js`의 `setupFog()`, `dev-log.md`의 Lane C 완료 기록까지 전부 사라짐(커밋된 적 없음). 원인: Antigravity가 브랜치(`gemini/lane-c-look`)가 아니라 **이 `game/` 폴더 자체, `main` 브랜치에서 직접 작업**하고 있었고, 이후 Lane E로 넘어가는 과정에서 커밋 안 된 변경사항이 정리(reset/checkout류)되며 날아간 것으로 추정.
+
+**즉시 대응**:
+1. 그 시점 디스크에 남아있던 Lane E 진행 중 파일(`assets/loaders.js`, `restyle.js`, `normalize.js`, `audio/audio.js`, `gate.js`, `Cubone.glb`→`assets/glb/cubone.glb` 이동, `_scratch/preview_e.*`)을 `git stash push -u`로 구조 → `gemini/lane-e-assets-audio` 브랜치에 pop해서 커밋+push 완료(문법 검사·off-limits 파일 미접촉 확인 완료, **내용은 아직 한 줄씩 리뷰 안 함**)
+2. 내 M1 파일들은 매 파일 작성 직후 바로 커밋+push하는 방식으로 전환(유실 위험 최소화)
+
+**진짜 문제 — 여전히 안 끝남**: Gemini가 브랜치를 쓰기 시작한 뒤에도(`gemini/lane-e-assets-audio`로 전환된 것 확인) **같은 폴더·같은 저장소를 공유**하고 있어서, 브랜치를 전환할 때마다 Claude 세션의 작업 디렉토리 HEAD까지 같이 끌려간다. `core/loop.js` 작업 중 이게 실시간으로 두 번 재현됨(다행히 매번 직전에 커밋해둬서 실유실은 없었음). **브랜치 분리만으로는 근본 해결이 안 되고, Antigravity를 별도 클론/워크트리로 물리적으로 분리해야 한다** — 사용자에게 제안했으나, 사용자는 "지금은 Gemini가 끝날 때까지 M1을 멈추고 기다리는" 쪽을 선택.
+
+**M1 상태: 일시 중단.** 안전하게 커밋된 부분: physics/, loop.js Phase, config/, player/input.js. 남은 작업: `player/character.js`(캡슐 플레이스홀더), `player/controller.js`(이동+충돌 통합), `camera/followCamera.js`(추적+드래그+벽충돌), `world/rooms/livingRoom.js` solid/fadeable 태깅 + 클릭↔드래그 판별 교체, `main.js` 통합(OrbitControls 제거), 헤드리스 키입력 시뮬레이션 검증. Gemini 작업 종료 신호를 받으면 재개.
+
+**다음 세션 필수 확인 사항**: Lane C 지시서(`docs/handoff/gemini-lane-c-look.md`)에 따라 다시 작업해야 함(유실됐으므로). Antigravity를 별도 폴더로 분리하는 게 여전히 미해결 — 재발 방지하려면 다음에 반드시 처리.
+
+---
+
 ## 2026-08-15 (6) — GitHub push + Gemini 병렬 레인 2개 분기
 
 **GitHub push**: `git remote add origin https://github.com/huichul2-collab/260814_mini_game.git`, 로컬 브랜치 `master`→`main`(GitHub 기본값과 맞춤), 베이스라인+M0 커밋 2개 push 완료. Git Credential Manager에 이미 캐시된 자격증명(`huichul2-collab`)으로 인증 성공.
