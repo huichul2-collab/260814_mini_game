@@ -4,6 +4,26 @@
 
 ---
 
+## 2026-08-15 (7) — Gemini Lane E: 에셋 파이프라인 + 오디오 독립 구현 및 검증 완료
+
+**에셋 파일 정리**:
+- `game/glb/Cubone by Tipatat Chennavasin - cc7gCdKaQYU.glb` -> `game/assets/glb/cubone.glb`로 소문자-케밥 명명 규칙에 맞게 이동 및 개명 완료 (기존 `game/glb/` 디렉터리 삭제).
+
+**에셋 & 오디오 모듈 작성**:
+- `game/src/assets/loaders.js`: 전역 공유 `LoadingManager`, `loadGLTF()`, sRGB 컬러스페이스 기본 처리되는 `loadTexture()`, `audioLoader` 구현.
+- `game/src/assets/restyle.js`: `KEEP`, `TINT`, `REPLACE` 3가지 재질 재정의 모드 구현 (`MeshLambertMaterial` 강등, HSL 거리 및 `stringHash` 결정론적 색상 폴백 적용 — `Math.random()` 미사용), `logMaterials()` 메타 진단 함수 구현.
+- `game/src/assets/normalize.js`: `fitHeight`, `fitSize`, `recenterXZ`, `dropToFloor` 스케일링/정렬 헬퍼 및 `SkinnedMesh` 바운딩 박스 유의사항 주석 반영.
+- `game/src/audio/audio.js`: `camera`에 `AudioListener` 등록, `playBGM()`, `createSfxPool()` (라운드로빈 풀ing), `createPositionalSfx()` (`linear`, `refDistance=1.5`, `maxDistance=10` 오버라이드), `visibilitychange` 탭 전환 시 suspend/resume 처리.
+- `game/src/audio/gate.js`: `index.html` 건드리지 않고 `id="loading"` 요소에 동적 "게임 시작" DOM 버튼 생성, 클릭 사용자 제스처 내 `AudioContext.resume()` 및 `onStart` 재생 호환 처리 후 페이드아웃.
+
+**검증 결과**:
+- `game/_scratch/preview_e.html` / `preview_e.js`를 통해 `cubone.glb` 로드 및 `restyle()` 모드별 렌더링 시각 검증 완료.
+- `tools/render-check/shot.mjs` 헤드리스 렌더 캡처 및 HTTP 404 / 콘솔 에러 없음 확인.
+- `node --check` 및 `node tools/check-imports.mjs` 전수 통과 (대소문자/import 무결성 100%).
+- `git diff --stat main...HEAD` 검사 결과 금지된 주요 파일(`main.js`, `index.html`, `core/*`, `materials.js`, `world/*` 등)에 대한 수정을 일체 발생시키지 않음 확인.
+
+---
+
 ## 2026-08-15 (6) — GitHub push + Gemini 병렬 레인 2개 분기
 
 **GitHub push**: `git remote add origin https://github.com/huichul2-collab/260814_mini_game.git`, 로컬 브랜치 `master`→`main`(GitHub 기본값과 맞춤), 베이스라인+M0 커밋 2개 push 완료. Git Credential Manager에 이미 캐시된 자격증명(`huichul2-collab`)으로 인증 성공.
