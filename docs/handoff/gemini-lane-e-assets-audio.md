@@ -3,6 +3,22 @@
 > 이 문서는 이 프로젝트의 다른 대화 맥락을 전혀 모르는 상태에서 읽는다는 전제로 쓰였다.
 > 필요한 배경은 전부 이 안에 있다. 모르는 걸 추측하지 말고, 애매하면 범위를 좁혀서 처리할 것.
 
+## -1. 작업 공간 분리 (반드시 먼저 할 것 — 이거 안 하면 작업이 통째로 날아갈 수 있다)
+
+**`C:\Users\hcyang\claude\claude_project\260814_mini_games` 폴더를 그대로 열어서 작업하지 마라.** 그 폴더는 Claude가 `main` 브랜치에서 동시에 작업 중이다. 같은 폴더에서 브랜치를 전환하면 Claude의 작업 디렉토리 HEAD까지 같이 끌려가고, 서로 커밋 안 된 변경사항을 덮어쓰거나 뒤섞는 사고가 실제로 한 번 났었다(이 레인 작업 중에 발생 — 다행히 stash로 복구는 됐지만 다시는 이런 식으로 하지 말 것).
+
+**시작 전에 반드시 별도 폴더에 저장소를 새로 클론해라**:
+```
+git clone https://github.com/huichul2-collab/260814_mini_game.git C:\Users\hcyang\gemini-workspace\lane-e-assets-audio
+cd C:\Users\hcyang\gemini-workspace\lane-e-assets-audio
+git checkout gemini/lane-e-assets-audio
+```
+(경로 이름은 예시다 — `260814_mini_games` 원본 폴더와 겹치지만 않으면 어디든 상관없다. 레인마다 별도 폴더를 쓰면 더 안전하다.)
+
+이 새 클론 폴더 **안에서만** 아래 작업을 하고, 커밋도 push도 전부 이 폴더에서 해라. 원본 `260814_mini_games` 폴더는 절대 열거나 건드리지 마라.
+
+작업이 끝나면 `git push origin gemini/lane-e-assets-audio`까지 하고 끝내라. `main`으로 merge하지 마라(§6 참고).
+
 ## 0. 이 프로젝트가 뭔가
 
 취미로 만드는 3D 방/집 탐험 게임. Three.js(r185) + 순수 ES 모듈, **빌드 단계 없음, npm 런타임 의존성 없음**.
@@ -182,4 +198,4 @@ node tools/check-imports.mjs "<game 폴더 절대경로>"
 
 ## 6. Git 작업 방식
 
-이 브랜치(`gemini/lane-e-assets-audio`)에서만 커밋해라. `main`으로 merge하거나 강제 push하지 마라 — 작업이 끝나면 그대로 두면 리뷰 후 병합된다. 커밋 메시지는 뭘 했는지 한두 줄로.
+**-1절에서 만든 별도 클론 안에서** 이 브랜치(`gemini/lane-e-assets-audio`)에만 커밋해라. `main`으로 merge하거나 강제 push하지 마라 — 작업이 끝나면 push만 하고 그대로 두면 리뷰 후 병합된다. 커밋 메시지는 뭘 했는지 한두 줄로.
