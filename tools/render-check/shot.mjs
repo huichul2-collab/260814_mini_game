@@ -62,7 +62,9 @@ if (!exe) {
 
 const server = await serve(gameDir);
 const port = server.address().port;
-const url = `http://127.0.0.1:${port}/`;
+const pathSuffix = process.argv[5] || '/';
+const url = `http://127.0.0.1:${port}${pathSuffix}`;
+
 
 const browser = await puppeteer.launch({
   executablePath: exe,
