@@ -4,6 +4,18 @@
 
 ---
 
+## 2026-08-15 (14) — 카메라 휠 줌 추가 + 피치 범위 확장
+
+**요청**: 카메라가 따라오는 건 좋은데 휠 줌이 없고, 시야 움직임/줌 범위가 좁게 느껴진다는 사용자 피드백.
+
+**변경**: `config/camera.js` — `distance`(고정값)를 `initialDistance` + `minDistance(1.8)`/`maxDistance(8.5)`로 분리, `zoomSensitivity` 추가. `minPitch 0.35→0.2`, `maxPitch 1.3→1.45`로 확장(더 수평에 가깝게~더 위에서 내려다보는 것까지). `followCamera.js`에 `state.zoom`(휠로 조절, 벽 충돌 보정된 `currentDistance`와는 별개) + `wheel` 리스너(`passive:false`+`preventDefault`로 페이지 스크롤 방지) 추가.
+
+**검증**: `tools/render-check/zoom-check.mjs`(신규) — `page.mouse.wheel()`로 실제 휠 이벤트 시뮬레이션(처음엔 `#loading` 오버레이가 휠을 가로채서 반응 없었음 → 시작 버튼 먼저 클릭하도록 수정 후 정상 확인). 줌인/줌아웃 둘 다 `minDistance`/`maxDistance`에 정확히 클램프됨을 기하학적으로 계산해서 재확인(카메라-플레이어 거리가 `zoom` 값과 살짝 다른 건 캐릭터 머리 높이 오프셋 때문 — 정상).
+
+**커밋**: `bea4754`, push 완료.
+
+---
+
 ## 2026-08-15 (13) — 오디오 게이트 연결 + AudioLoader Promise 버그 발견·수정
 
 **요청**: 사용자가 `game/assets/audio/test.mp3`(직접 넣어둔 테스트용 mp3)를 `playBGM()`으로 재생되게 해달라고 요청.
