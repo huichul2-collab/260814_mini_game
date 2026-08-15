@@ -1,0 +1,14 @@
+# core.autocrlf=true(사용자 전역 설정)와 커밋된 줄바꿈이 안 맞아서 매번
+# 체크아웃/커밋마다 CRLF↔LF 왕복 노이즈가 생기던 문제를 여기서 못박는다.
+# 텍스트 파일은 저장소 안에서 항상 LF로 고정 — 어떤 OS에서 체크아웃해도
+# 동일하게 LF로 나오고, git diff에 줄바꿈만 바뀐 가짜 변경이 안 잡힌다.
+* text=auto eol=lf
+
+# 바이너리는 줄바꿈 변환 대상이 아님을 명시(오탐 방지)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.glb binary
+*.mp3 binary
+*.wav binary
+*.ico binary
