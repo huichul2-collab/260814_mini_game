@@ -9,20 +9,24 @@ export function createExterior(scene) {
   const group = new THREE.Group();
 
   // 1. 넓은 바깥 지면
+  // ⚠️ 정점 간격이 80/16=5유닛이라, "반경 4 이내는 평평하게" 하드 컷오프는
+  // 원점 정점 딱 하나만 평평하게 남기고 바로 다음 고리(반경 5)부터 최대
+  // 0.4유닛까지 접혀버렸다. 방은 반경 ~2.5라 이 첫 고리가 방 바로 바깥,
+  // 특히 열린 앞쪽 모서리에 걸려 땅이 방을 침범해 깨진 것처럼 보이는
+  // 원인이었다. 하드 컷오프 대신 반경 4~14 사이에서 서서히 커지는
+  // 감쇠로 바꿔서 정점 간격과 무관하게 방 주변이 매끈하게 이어지도록 함.
   const groundGeo = new THREE.PlaneGeometry(80, 80, 16, 16);
-  // 지면 미세 변형 (로우폴리 느낌)
   const pos = groundGeo.attributes.position;
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i);
     const y = pos.getY(i);
-    // 방 주변(radius 4)은 평평하게 유지
-    if (Math.hypot(x, y) > 4) {
-      pos.setZ(i, Math.sin(x * 0.3) * Math.cos(y * 0.3) * 0.4);
-    }
+    const dist = Math.hypot(x, y);
+    const falloff = Math.min(1, Math.max(0, (dist - 4) / 10));
+    pos.setZ(i, Math.sin(x * 0.3) * Math.cos(y * 0.3) * 0.4 * falloff);
   }
   groundGeo.computeVertexNormals();
 
-  const groundMat = mat(0x2a382c); // 어두운 숲/풀빛 톤
+  const groundMat = mat(0x3d5240); // 어두운 숲/풀빛 톤(기존보다 밝혀서 현재 조명에서 완전히 까매 보이지 않게)
   const ground = new THREE.Mesh(groundGeo, groundMat);
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.1;
