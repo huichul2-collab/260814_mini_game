@@ -4,45 +4,23 @@ import { toonMat } from '../../render/materials.js';
 import { onFrame } from '../../core/loop.js';
 
 /* ------------------------------------------------------------------ *
- *  방 1개 — main.js에서 기계적으로 옮겨온 내용 (로드맵 M0 "모듈 분리").
- *  좌표·구성은 원본과 동일, 동작도 동일하다.
+ *  거실 소품 전용 파일 (M4). 바닥·벽·문은 house.js(layout.js 데이터
+ *  기반)가 만들고, 이 파일은 더 이상 구조를 만들지 않는다.
  *
- *  ⚠️ 이 손코딩 벽/가구 구조는 M4(집 4개 방)에서 world/layout.js 기반
- *  데이터 생성 방식으로 교체될 예정이다. 다만 M1(이동/충돌)이 걸어다닐
- *  대상 자체가 있어야 성립하므로, 벽 3개와 주요 가구 몇 개에는
- *  {solid:true}(충돌)/{fadeable:true}(카메라 시야 차단) 태그를 미리
- *  붙여둔다 — M4에서 layout.js로 교체될 때 이 태그 붙이는 방식 자체는
- *  그대로 재사용된다.
+ *  방이 3.6m → 6.0m(docs/spec/M4-layout.md §2 living)로 커지면서 벽
+ *  안쪽면이 ±1.74 → ±2.94로 이동했다. 벽에 붙어 있던 소품 좌표는 전부
+ *  스펙 §5.2 표 그대로 옮겼다 — 여기서 새로 계산하지 않는다.
  * ------------------------------------------------------------------ */
 export function createLivingRoom(scene, camera, renderer) {
-  const ROOM_W = 3.6;
-  const ROOM_D = 3.6;
-  const ROOM_H = 2.3;
-
   const room = new THREE.Group();
   scene.add(room);
 
-  // 바닥
-  makeMesh(new THREE.BoxGeometry(ROOM_W, 0.12, ROOM_D), 0x8a5a3c, room, [0, -0.06, 0]);
-
-  // 러그 (아기자기 포인트 1)
-  makeMesh(new THREE.CylinderGeometry(0.75, 0.75, 0.02, 24), 0xd1553f, room, [0.2, 0.02, 0.5]);
-
-  // 뒷벽
-  makeMesh(new THREE.BoxGeometry(ROOM_W, ROOM_H, 0.12), 0xf1e3cd, room, [0, ROOM_H / 2, -ROOM_D / 2], {}, { solid: true, fadeable: true });
-
-  // 왼쪽 벽
-  makeMesh(new THREE.BoxGeometry(0.12, ROOM_H, ROOM_D), 0xe7d5ba, room, [-ROOM_W / 2, ROOM_H / 2, 0], {}, { solid: true, fadeable: true });
-
-  // 오른쪽 벽
-  makeMesh(new THREE.BoxGeometry(0.12, ROOM_H, ROOM_D), 0xe7d5ba, room, [ROOM_W / 2, ROOM_H / 2, 0], {}, { solid: true, fadeable: true });
-
-  // 걸레받이(포인트 장식)
-  makeMesh(new THREE.BoxGeometry(ROOM_W, 0.14, 0.06), 0x5a3826, room, [0, 0.07, -ROOM_D / 2 + 0.09]);
+  // 러그 (아기자기 포인트 1) — 방이 커진 만큼 확대
+  makeMesh(new THREE.CylinderGeometry(1.1, 1.1, 0.02, 24), 0xd1553f, room, [0.2, 0.02, 0.9]);
 
   // ---------- 오브젝트: 책상 ----------
   const desk = new THREE.Group();
-  desk.position.set(0.4, 0, -1.35);
+  desk.position.set(0.4, 0, -2.55);
   room.add(desk);
 
   // 책상 상판만 solid로 태깅 — 다리 사이 틈은 무시하고 상판 XZ 풋프린트를
@@ -60,7 +38,7 @@ export function createLivingRoom(scene, camera, renderer) {
 
   // 의자 (아기자기 포인트 2)
   const chair = new THREE.Group();
-  chair.position.set(0.4, 0, -0.55);
+  chair.position.set(0.4, 0, -1.75);
   room.add(chair);
   makeMesh(new THREE.BoxGeometry(0.42, 0.05, 0.42), 0xd1553f, chair, [0, 0.42, 0], {}, { solid: true });
   makeMesh(new THREE.BoxGeometry(0.42, 0.42, 0.05), 0xd1553f, chair, [0, 0.63, 0.19]);
@@ -73,9 +51,9 @@ export function createLivingRoom(scene, camera, renderer) {
     makeMesh(new THREE.CylinderGeometry(0.025, 0.025, 0.42, 8), 0x5a3826, chair, [lx, 0.21, lz]);
   }
 
-  // ---------- 아이템 증식: 책장 (왼쪽 벽) ----------
+  // ---------- 아이템 증식: 책장 ----------
   const bookshelf = new THREE.Group();
-  bookshelf.position.set(-1.6, 0, -0.9);
+  bookshelf.position.set(-2.75, 0, -0.9);
   room.add(bookshelf);
 
   makeMesh(new THREE.BoxGeometry(0.28, 1.3, 0.05), 0x7a4a2a, bookshelf, [0, 0.65, -0.375]);
@@ -98,15 +76,15 @@ export function createLivingRoom(scene, camera, renderer) {
 
   // ---------- 아이템 증식: 화분 ----------
   const plant = new THREE.Group();
-  plant.position.set(-1.55, 0, 1.15);
+  plant.position.set(-2.75, 0, 1.15);
   room.add(plant);
   makeMesh(new THREE.CylinderGeometry(0.14, 0.11, 0.22, 12), 0xc9683f, plant, [0, 0.11, 0], {}, { solid: true });
   makeMesh(new THREE.IcosahedronGeometry(0.22, 0), 0x5f9e52, plant, [0, 0.42, 0]);
   makeMesh(new THREE.IcosahedronGeometry(0.15, 0), 0x74b463, plant, [0.12, 0.58, 0.05]);
 
-  // ---------- 아이템 증식: 벽 액자 (뒷벽) ----------
+  // ---------- 아이템 증식: 벽 액자 (뒷벽 안쪽면에 밀착) ----------
   const frame = new THREE.Group();
-  frame.position.set(-0.9, 1.55, -1.725);
+  frame.position.set(-0.9, 1.55, -2.88);
   room.add(frame);
   makeMesh(new THREE.BoxGeometry(0.5, 0.38, 0.03), 0x5a3826, frame, [0, 0, 0]);
   makeMesh(new THREE.BoxGeometry(0.4, 0.28, 0.01), 0x9db8ff, frame, [0, 0, 0.02]);
@@ -114,8 +92,8 @@ export function createLivingRoom(scene, camera, renderer) {
   // ---------- 아이템 증식: 머그컵 (책상 위) ----------
   makeMesh(new THREE.CylinderGeometry(0.045, 0.04, 0.07, 12), 0xe0793f, desk, [-0.25, 0.79, 0.1]);
 
-  // ---------- 아이템 증식: 방석 (러그 옆) ----------
-  makeMesh(new THREE.CylinderGeometry(0.22, 0.24, 0.08, 16), 0x5a8fd1, room, [0.65, 0.04, 0.95]);
+  // ---------- 아이템 증식: 방석 ----------
+  makeMesh(new THREE.CylinderGeometry(0.22, 0.24, 0.08, 16), 0x5a8fd1, room, [0.9, 0.04, 1.5]);
 
   // ---------- 상호작용 오브젝트: 스탠드 조명 ----------
   const lamp = new THREE.Group();
