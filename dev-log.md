@@ -4,6 +4,25 @@
 
 ---
 
+## 2026-08-15 (16) — Gemini Lane: BGM/효과음 실제 에셋 확보 및 발소리 모듈 작성 완료
+
+**실제 음원 에셋 확보 및 용량 예산 준수**:
+- `game/assets/audio/bgm-main.mp3`: 노을 톤 방 분위기에 어울리는 아늑한 75초 루프 앰비언트 트랙 (CC0, **1.173 MB** — 1.5MB 이하 예산 엄수).
+- `game/assets/audio/sfx-footstep.mp3`: 짧은 나무 바닥 보행음 (CC0, **1.67 KB** — 30KB 이하 예산 엄수).
+- `game/assets/audio/sfx-click.mp3`: 짧은 스탠드 스위치 클릭음 (CC0, **1.27 KB** — 30KB 이하 예산 엄수).
+- `ATTRIBUTION.md` 생성 및 오디오 라이선스 기록 완료.
+
+**보조 모듈 작성**:
+- `game/src/audio/footsteps.js`: `core/loop.js`의 `onFrame` (`Phase.SIM`)과 `player/input.js`의 `getMoveAxis()`를 읽기 전용 참조하여 WASD 보행 주기(0.38s)에 따라 효과음 풀(`createSfxPool`)을 자동 재생하는 독립 모듈 구현 (`main.js` 및 오프리밋 파일 미수정).
+
+**검증 및 제약 준수**:
+- `game/_scratch/preview_audio.html` / `preview_audio.js` 임시 검증 페이지 작성.
+- `node --check` 및 `node tools/check-imports.mjs` 통과 (38개 파일 무결성 100%).
+- `main.js`, `index.html`, `audio.js`, `gate.js` 등 오프리밋 파일 수정을 일체 하지 않음을 `git diff --stat origin/main...HEAD`로 최종 확인.
+- 격리된 작업 공간 `C:\Users\hcyang\gemini-workspace\lane-audio` 내에서만 안전하게 작업 수행.
+
+---
+
 ## 2026-08-15 (14) — 카메라 휠 줌 추가 + 피치 범위 확장
 
 **요청**: 카메라가 따라오는 건 좋은데 휠 줌이 없고, 시야 움직임/줌 범위가 좁게 느껴진다는 사용자 피드백.
