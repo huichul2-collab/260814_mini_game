@@ -18,3 +18,10 @@ export function createSkyDome() {
   const mat = new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide, depthWrite: false, fog: false });
   return new THREE.Mesh(geo, mat);
 }
+
+/* ---------- 선형 거리 안개 (스카이돔 지평선 색상 #e0793f와 일치) ---------- */
+export function setupFog(scene, near = 8, far = 35) {
+  scene.fog = new THREE.Fog(0xe0793f, near, far);
+  return scene.fog;
+}
+

@@ -56,6 +56,24 @@ Gemini 작업 재개 후 `main`에서 M1 나머지를 끝까지 진행. 매 파�
 
 ---
 
+## 2026-08-15 — Lane C (룩) 완료: 후처리 · 안개 · 바깥 지형 (원문, Lane C 작성)
+
+> 이 항목은 Lane C(Gemini)가 당시 직접 작성한 것을 그대로 보존한다. 항목(7)이 "유실"이라 기록한 건 이후 항목(8)에서 정정됐고, 아래 내용이 실제로 `gemini/lane-c-look` 브랜치에 커밋돼 있었다.
+
+**Lane C (gemini/lane-c-look)** 작업 완료. `docs/handoff/gemini-lane-c-look.md` 지시서 100% 준수.
+
+1. **`game/src/render/post/GradeGrainVignetteShader.js`**: 단일 셰이더 패스로 대비/채도/색보정(`uGain`, `uLift`)/비네트/그레인 구현. `gl_FragCoord.xy / uGrainPixel` 기준 필름 그레인 계산으로 해상도 독립성 확보. `#include <colorspace_fragment>` 미사용으로 sRGB 이중 변환 방지.
+2. **`game/src/render/post/composer.js`**: `createComposer(renderer, scene, camera)` 구현. WebGL2 MSAA(`samples: 4`) 렌더타깃 적용. **패스 순서**: `RenderPass` → `OutputPass` → `GradePass` (sRGB 디스플레이 색공간에서 색보정 동작 보장). `resize`/`update` 노출.
+3. **`game/src/world/exterior.js`**: `createExterior(scene)` 구현. 넓은 바깥 지면 + 로우폴리 산/언덕 및 나무 배치로 안개(`scene.fog`) 시각 연출 대상 구성.
+4. **`game/src/render/sky.js`**: `setupFog(scene)` 추가. 선형 `THREE.Fog(0xe0793f, 8, 35)` 적용으로 스카이돔 지평선 색상과 경계선 없이 부드럽게 통합.
+5. **검증**:
+   - `uGain`: 초기 추정치 `(1.25, 0.72, 0.85)` / `uLift`: 초기 추정치 `(0.06, 0.02, 0.08)` 유지 (렌더링 결과 `sample1.PNG`와 톤/그레인/비네트 균형 완벽 일치).
+   - `tools/render-check/shot.mjs` 기반 헤드리스 Chrome 오프라인 렌더링 캡처(`out.png`) 및 시각 검증 통과.
+   - `node --check` 및 `node tools/check-imports.mjs` 검사 통과 (오류 0건).
+   - 수정 금지 파일(`main.js`, `index.html`, `core/*`, `rooms/*` 등) 미수정 규칙 엄격 준수.
+
+---
+
 ## 2026-08-15 (6) — GitHub push + Gemini 병렬 레인 2개 분기
 
 **GitHub push**: `git remote add origin https://github.com/huichul2-collab/260814_mini_game.git`, 로컬 브랜치 `master`→`main`(GitHub 기본값과 맞춤), 베이스라인+M0 커밋 2개 push 완료. Git Credential Manager에 이미 캐시된 자격증명(`huichul2-collab`)으로 인증 성공.
