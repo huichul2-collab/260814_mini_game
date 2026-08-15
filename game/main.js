@@ -3,6 +3,7 @@ import { renderer, scene, camera } from './src/core/context.js';
 import { tick } from './src/core/loop.js';
 import { createSkyDome, setupFog } from './src/render/sky.js';
 import { setupLighting } from './src/render/lighting.js';
+import { createHouse } from './src/world/house.js';
 import { createLivingRoom } from './src/world/rooms/livingRoom.js';
 import { createExterior } from './src/world/exterior.js';
 import { rebuildFrom, getColliders } from './src/physics/colliders.js';
@@ -31,6 +32,7 @@ const hintEl = document.getElementById('hint');
 scene.add(createSkyDome());
 setupFog(scene);
 setupLighting(scene);
+createHouse(scene); // M4: layout.js 기반 바닥·벽·문. 방 3개(bedA/study/bedB)는 아직 뼈대만 — 소품은 gemini/lane-rooms
 const livingRoom = createLivingRoom(scene, camera, renderer);
 createExterior(scene); // 안개가 걸릴 원경 지형 — 이게 없으면 fog가 눈에 안 보인다
 
@@ -48,7 +50,7 @@ loadGLTF('./assets/glb/cubone.glb')
   })
   .catch((err) => console.warn('[cubone] 로드 실패:', err));
 
-const player = createPlayer(scene, [0, 0, 1.2]); // 방 앞쪽, 가구와 안 겹치는 스폰 위치
+const player = createPlayer(scene, [0, 0, 1.5]); // 거실, D3 문 앞 여유 1.5m (docs/spec/M4-layout.md §5.3)
 rebuildFrom(scene); // 플레이어는 solid 태그가 없으니 자기 자신과는 안 부딪힘
 
 const followCam = createFollowCamera(camera, renderer.domElement, player.root.position, scene);
