@@ -5,14 +5,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer-core';
 
-const [, , gameDirArg, outPngArg, waitMsArg] = process.argv;
+const [, , gameDirArg, outPngArg, waitMsArg, pagePathArg] = process.argv;
 if (!gameDirArg || !outPngArg) {
-  console.error('usage: node shot.mjs <gameDir> <outPng> [waitMs]');
+  console.error('usage: node shot.mjs <gameDir> <outPng> [waitMs] [pagePath]');
   process.exit(1);
 }
 const gameDir = path.resolve(gameDirArg);
 const outPng = path.resolve(outPngArg);
 const waitMs = Number(waitMsArg || 1500);
+const pagePath = pagePathArg ? pagePathArg.replace(/^\//, '') : '';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -62,9 +63,7 @@ if (!exe) {
 
 const server = await serve(gameDir);
 const port = server.address().port;
-const pathSuffix = process.argv[5] || '/';
-const url = `http://127.0.0.1:${port}${pathSuffix}`;
-
+const url = `http://127.0.0.1:${port}/${pagePath}`;
 
 const browser = await puppeteer.launch({
   executablePath: exe,
