@@ -9,19 +9,19 @@ export function createExterior(scene) {
   const group = new THREE.Group();
 
   // 1. 넓은 바깥 지면
-  // ⚠️ 정점 간격이 80/16=5유닛이라, "반경 4 이내는 평평하게" 하드 컷오프는
-  // 원점 정점 딱 하나만 평평하게 남기고 바로 다음 고리(반경 5)부터 최대
-  // 0.4유닛까지 접혀버렸다. 방은 반경 ~2.5라 이 첫 고리가 방 바로 바깥,
-  // 특히 열린 앞쪽 모서리에 걸려 땅이 방을 침범해 깨진 것처럼 보이는
-  // 원인이었다. 하드 컷오프 대신 반경 4~14 사이에서 서서히 커지는
-  // 감쇠로 바꿔서 정점 간격과 무관하게 방 주변이 매끈하게 이어지도록 함.
+  // M4(docs/spec/M4-layout.md §5.1)로 집이 원점 반경 2.5m → 9.9m(모서리
+  // (7,7))까지 커졌다. 감쇠 시작 반경을 4에서 그대로 두면 집 모서리에서
+  // 변위가 최대 0.236m까지 커져서 바닥(두께 0.12)을 뚫고 올라온다.
+  // → 11로 올림(9.9 < 11, 여유 1.1m). 정점 간격(80/16=5)보다 큰 반경을
+  // 평탄하게 유지하는 게 핵심 — 이 규칙을 어겨서 반경 4 때 실제로
+  // `4464d4e` 버그(땅이 방 모서리를 침범)가 났었다.
   const groundGeo = new THREE.PlaneGeometry(80, 80, 16, 16);
   const pos = groundGeo.attributes.position;
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i);
     const y = pos.getY(i);
     const dist = Math.hypot(x, y);
-    const falloff = Math.min(1, Math.max(0, (dist - 4) / 10));
+    const falloff = Math.min(1, Math.max(0, (dist - 11) / 10));
     pos.setZ(i, Math.sin(x * 0.3) * Math.cos(y * 0.3) * 0.4 * falloff);
   }
   groundGeo.computeVertexNormals();
@@ -60,8 +60,11 @@ export function createExterior(scene) {
   const trunkMat = mat(0x4a3222);
   const leavesMat = mat(0x384a32);
 
+  // M4로 집 bbox가 X[-3,7]·Z[-7,7]까지 커지면서, 그걸 1.5m 확장한
+  // X[-4.5,8.5]·Z[-8.5,8.5] 안에 있던 [-4,-5]/[4.5,-4]/[5,4] 세 그루는
+  // 집 안/집 코앞에 박힌다 — 삭제(docs/spec/M4-layout.md §5.1).
   const treePositions = [
-    [-4, -5], [4.5, -4], [-5.5, 3], [5, 4],
+    [-5.5, 3],
     [-8, -8], [7, -9], [-10, 5], [9, 7],
     [-12, -3], [11, -2], [-3, -12], [2, -14]
   ];
