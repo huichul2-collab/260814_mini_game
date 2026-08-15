@@ -15,8 +15,9 @@ function clamp(v, lo, hi) {
 }
 
 export function createFollowCamera(camera, domElement, target, scene) {
-  const state = { yaw: CAM.initialYaw, pitch: CAM.initialPitch };
-  let currentDistance = CAM.distance;
+  // zoom: 휠로 조절하는 "원하는" 거리. currentDistance: 벽 충돌로 실제 보정된 거리.
+  const state = { yaw: CAM.initialYaw, pitch: CAM.initialPitch, zoom: CAM.initialDistance };
+  let currentDistance = CAM.initialDistance;
 
   // 시야를 가릴 수 있는 대상(TAG.FADEABLE, 주로 벽)을 한 번만 수집한다 —
   // 매 프레임 scene.traverse()는 하지 않는다.
@@ -51,6 +52,16 @@ export function createFollowCamera(camera, domElement, target, scene) {
     dragging = false;
   });
 
+  // ---------- 휠로 줌 ----------
+  domElement.addEventListener(
+    'wheel',
+    (e) => {
+      e.preventDefault(); // 페이지 스크롤 방지
+      state.zoom = clamp(state.zoom + e.deltaY * CAM.zoomSensitivity, CAM.minDistance, CAM.maxDistance);
+    },
+    { passive: false }
+  );
+
   const smoothTarget = new THREE.Vector3();
   let hasTarget = false;
   const raycaster = new THREE.Raycaster();
@@ -75,8 +86,8 @@ export function createFollowCamera(camera, domElement, target, scene) {
     }
 
     backDir.set(0, 0, 1).applyAxisAngle(UP, state.yaw);
-    const horiz = CAM.distance * Math.cos(state.pitch);
-    const height = CAM.distance * Math.sin(state.pitch);
+    const horiz = state.zoom * Math.cos(state.pitch);
+    const height = state.zoom * Math.sin(state.pitch);
     desired.copy(smoothTarget).addScaledVector(backDir, horiz);
     desired.y += height;
 
