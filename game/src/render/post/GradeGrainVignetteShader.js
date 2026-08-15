@@ -6,8 +6,12 @@ export const GradeGrainVignetteShader = {
     tDiffuse: { value: null },
     uTime: { value: 0 },
     uResolution: { value: new THREE.Vector2(1, 1) },
-    uGain: { value: new THREE.Vector3(1.25, 0.72, 0.85) },
-    uLift: { value: new THREE.Vector3(0.06, 0.02, 0.08) },
+    // G채널 0.72가 너무 깎여서 전역적으로 붉은기가 과했다(사용자 리포트).
+    // R을 살짝 낮추고 G를 크게 올려 "따뜻한 실내톤"은 유지하되 초록이
+    // 죽지 않게 함. 방별 구분은 이 값이 아니라 lighting.js의 방별
+    // 포인트라이트 색조가 맡는다 — 여기는 전역 톤만 책임진다.
+    uGain: { value: new THREE.Vector3(1.15, 0.92, 0.88) },
+    uLift: { value: new THREE.Vector3(0.05, 0.04, 0.06) },
     uSaturation: { value: 1.1 },
     uContrast: { value: 1.15 },
     uGrainAmount: { value: 0.06 },

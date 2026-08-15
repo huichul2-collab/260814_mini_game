@@ -3,3 +3,9 @@ node_modules/
 .DS_Store
 Thumbs.db
 tools/render-check/*.png
+# 단, M4 방 4개의 정본 검증 스크린샷은 예외 — 1층(Claude 앱)이 코드 실행 없이
+# 파일만 읽고 육안 리뷰할 수 있어야 하므로 커밋해서 남긴다.
+!tools/render-check/m4-living.png
+!tools/render-check/m4-bedA.png
+!tools/render-check/m4-study.png
+!tools/render-check/m4-bedB.png
