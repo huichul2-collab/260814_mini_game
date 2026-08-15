@@ -1,13 +1,15 @@
 import * as THREE from 'three';
 import { renderer, scene, camera } from './src/core/context.js';
 import { tick } from './src/core/loop.js';
-import { createSkyDome } from './src/render/sky.js';
+import { createSkyDome, setupFog } from './src/render/sky.js';
 import { setupLighting } from './src/render/lighting.js';
 import { createLivingRoom } from './src/world/rooms/livingRoom.js';
+import { createExterior } from './src/world/exterior.js';
 import { rebuildFrom, getColliders } from './src/physics/colliders.js';
 import { createPlayer } from './src/player/character.js';
 import { initController } from './src/player/controller.js';
 import { createFollowCamera } from './src/camera/followCamera.js';
+import { createComposer } from './src/render/post/composer.js';
 
 /* ------------------------------------------------------------------ *
  *  부트스트랩 전용 파일 (로드맵 §3 "main.js는 통합자 전용").
@@ -22,8 +24,10 @@ const loadingEl = document.getElementById('loading');
 const hintEl = document.getElementById('hint');
 
 scene.add(createSkyDome());
+setupFog(scene);
 setupLighting(scene);
 createLivingRoom(scene, camera, renderer);
+createExterior(scene); // 안개가 걸릴 원경 지형 — 이게 없으면 fog가 눈에 안 보인다
 
 const player = createPlayer(scene, [0, 0, 1.2]); // 방 앞쪽, 가구와 안 겹치는 스폰 위치
 rebuildFrom(scene); // 플레이어는 solid 태그가 없으니 자기 자신과는 안 부딪힘
@@ -41,12 +45,19 @@ setTimeout(() => loadingEl.remove(), 400);
 hintEl.classList.remove('hidden');
 setTimeout(() => hintEl.classList.add('hidden'), 6000);
 
+// ---------- 후처리 (그레인+색보정+비네트) ----------
+const post = createComposer(renderer, scene, camera);
+window.addEventListener('resize', () => {
+  post.resize(window.innerWidth, window.innerHeight);
+});
+
 // ---------- 렌더 루프 ----------
 const clock = new THREE.Clock();
 function animate() {
   requestAnimationFrame(animate);
   const dt = clock.getDelta();
   tick(dt); // SIM(이동/충돌) → POST_SIM(카메라) 순서로 실행됨
-  renderer.render(scene, camera);
+  post.update(dt);
+  post.render(); // renderer.render() 대신 컴포저가 최종 출력을 담당
 }
 animate();

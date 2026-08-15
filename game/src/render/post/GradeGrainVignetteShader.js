@@ -53,9 +53,15 @@ export const GradeGrainVignetteShader = {
       color = color * uGain + uLift;
 
       // 5. 비네트 (Vignette)
-      float dist = length(vUv - vec2(0.5));
-      float vig = smoothstep(0.8, 0.8 - uVignetteSoft, dist * (0.8 + uVignette));
-      color *= vig;
+      // ⚠️ 원래 smoothstep(0.8, 0.8 - uVignetteSoft, ...)는 edge0(0.8) > edge1(0.2)라
+      // GLSL 스펙상 정의되지 않은 동작이었고, 실제로는 화면 모서리를 완전 검정으로
+      // 뭉개버렸다(하늘/바깥지형까지 같이 지워짐). edge0 < edge1로 정상화하고,
+      // 종횡비 보정(정사각형이 아닌 화면에서 비네트가 타원으로 안 늘어나게) +
+      // 완전 검정 방지용 하한선을 추가했다.
+      vec2 vc = (vUv - 0.5) * vec2(uResolution.x / max(uResolution.y, 1.0), 1.0);
+      float dist = length(vc) * (0.7 + uVignette);
+      float vig = 1.0 - smoothstep(0.3, 0.3 + max(uVignetteSoft, 0.05), dist);
+      color *= clamp(vig, 0.15, 1.0);
 
       // 6. 필름 그레인 (gl_FragCoord.xy / uGrainPixel 기준)
       vec2 g = gl_FragCoord.xy / max(uGrainPixel, 0.001);
