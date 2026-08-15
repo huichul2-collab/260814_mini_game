@@ -4,6 +4,20 @@
 
 ---
 
+## 2026-08-15 (10) — Lane C 리뷰·merge·버그 수정 + 컴포저 연결
+
+**리뷰 방식**: 저번 충돌 재발을 피하려고 브랜치를 체크아웃하지 않고 `git show gemini/lane-c-look:<path>`로 각 파일을 읽어서 리뷰. 지시서 준수 확인: 패스 순서(`RenderPass→OutputPass→GradePass`) 정확, MSAA `samples:4` 적용, 그레인 `gl_FragCoord/uGrainPixel` 기준(지시대로), `#include <colorspace_fragment>` 미사용, off-limits 파일(`main.js`/`index.html`/`core/*`/`materials.js`/`meshFactory.js`/`rooms/*`) 전부 미접촉 확인.
+
+**merge**: `dev-log.md`가 같은 삽입 지점(헤더 바로 아래)을 두고 충돌 — 이 세션의 (7)(8)(9) 항목을 유지하고 Lane C가 직접 쓴 완료 기록은 "원문, Lane C 작성"이라고 라벨 붙여 그대로 보존(삭제하지 않음).
+
+**실제 렌더링해서 발견한 버그**: `main.js`에 `createComposer`/`setupFog`/`createExterior`를 연결하고 스크린샷을 찍어보니 화면 모서리가 완전 검정으로 뭉개짐(하늘/바깥지형까지 같이 안 보임). 원인은 비네트 셰이더의 `smoothstep(0.8, 0.8 - uVignetteSoft, ...)` — **edge0(0.8)가 edge1(0.2)보다 커서 GLSL 스펙상 정의되지 않은 동작**이었다. 정상적인 edge0<edge1 순서로 고치고, 종횡비 보정 + 완전 검정 방지용 하한선(0.15)을 추가. 재렌더링해서 모서리가 더는 순수 검정이 아닌 것 확인.
+
+**남은 건 버그가 아니라 튜닝**: 색보정이 `sample1.PNG`보다 마젠타 쪽으로 치우쳐 보이고, 바깥 지면(`0x2a382c`)이 현재 조명 아래서 거의 검게 보인다. 지시서에 이미 "`uGain`/`uLift`는 정답이 아니라 출발점"이라고 명시해뒀던 부분이라 눈으로 보면서 조정할 몫으로 남겨둠 — 사용자 확인 대기.
+
+**커밋**: `7d40329`(merge) → `c8170a6`(main.js 연결 + 비네트 버그 수정), 둘 다 push 완료.
+
+---
+
 ## 2026-08-15 (9) — M1 완료: 걸어다니는 방 1개
 
 Gemini 작업 재개 후 `main`에서 M1 나머지를 끝까지 진행. 매 파일 작성 직후 커밋+push하는 방식을 계속 유지(항목 7의 충돌 이후 재발 방지).
