@@ -13,6 +13,8 @@ import { createComposer } from './src/render/post/composer.js';
 import { loadGLTF } from './src/assets/loaders.js';
 import { restyle, Restyle, logMaterials } from './src/assets/restyle.js';
 import { fitHeight } from './src/assets/normalize.js';
+import { initAudioGate } from './src/audio/gate.js';
+import { playBGM } from './src/audio/audio.js';
 
 /* ------------------------------------------------------------------ *
  *  부트스트랩 전용 파일 (로드맵 §3 "main.js는 통합자 전용").
@@ -56,9 +58,13 @@ initController(player, followCam.getYaw);
 // 프로덕션 동작에는 관여하지 않는다.
 window.__debug = { player, camera, getColliders };
 
-// ---------- 로딩 완료 처리 ----------
-loadingEl.style.opacity = '0';
-setTimeout(() => loadingEl.remove(), 400);
+// ---------- 오디오 게이트 (브라우저 오토플레이 정책상 사용자 제스처 필요) ----------
+// #loading 오버레이를 "시작하기" 버튼으로 바꾼다(index.html은 안 건드림, gate.js가 DOM 주입).
+// 클릭 시에만 AudioContext.resume() + BGM 재생이 허용된다.
+initAudioGate(loadingEl, () => {
+  const bgm = playBGM('./assets/audio/test.mp3', { volume: 0.4, loop: true });
+  window.__debug.bgm = bgm;
+});
 hintEl.classList.remove('hidden');
 setTimeout(() => hintEl.classList.add('hidden'), 6000);
 

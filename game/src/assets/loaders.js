@@ -41,4 +41,16 @@ export function loadTexture(url, { colorSpace = THREE.SRGBColorSpace } = {}) {
   });
 }
 
+/**
+ * ⚠️ THREE.AudioLoader.load(url, onLoad, onProgress, onError)는 콜백 방식이고
+ * 값을 반환하지 않는다(Promise가 아님). audio.js가 `audioLoader.load(url).then(...)`
+ * 형태로 호출해서 "Cannot read properties of undefined (reading 'then')"가
+ * 나던 실제 버그가 있었다 — 여기서 Promise로 감싸서 다른 로더들과 패턴을 맞춘다.
+ */
+export function loadAudioBuffer(url) {
+  return new Promise((resolve, reject) => {
+    audioLoader.load(url, resolve, undefined, reject);
+  });
+}
+
 export { manager };

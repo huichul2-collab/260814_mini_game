@@ -49,8 +49,15 @@ export function initAudioGate(loadingEl, onStart) {
       console.warn('[audio-gate] AudioContext resume 실패:', err);
     }
 
+    // ⚠️ onStart()가 던지면(재생 로직 버그 등) 아래 페이드아웃까지 막혀서
+    // 사용자가 "게임 시작" 화면에 영원히 갇힌다 — 실제로 이 문제가 있었다.
+    // 오디오가 안 되더라도 게임은 뜨는 게 맞으므로 try/catch로 분리한다.
     if (typeof onStart === 'function') {
-      onStart();
+      try {
+        onStart();
+      } catch (err) {
+        console.warn('[audio-gate] onStart 콜백 실패:', err);
+      }
     }
 
     // 로딩 엘리먼트 페이드아웃 및 제거

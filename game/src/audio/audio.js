@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { camera } from '../core/context.js';
-import { audioLoader } from '../assets/loaders.js';
+import { loadAudioBuffer } from '../assets/loaders.js';
 
 /**
  * 전역 AudioListener - 반드시 camera의 자식으로 등록
@@ -15,8 +15,7 @@ if (camera) {
  */
 export function playBGM(url, { volume = 0.5, loop = true } = {}) {
   const sound = new THREE.Audio(listener);
-  audioLoader
-    .load(url)
+  loadAudioBuffer(url)
     .then((buffer) => {
       sound.setBuffer(buffer);
       sound.setLoop(loop);
@@ -38,8 +37,7 @@ export function createSfxPool(url, size = 4, { volume = 0.8 } = {}) {
   let index = 0;
   let isLoaded = false;
 
-  audioLoader
-    .load(url)
+  loadAudioBuffer(url)
     .then((buffer) => {
       pool.forEach((sound) => {
         sound.setBuffer(buffer);
@@ -80,8 +78,7 @@ export function createPositionalSfx(url, mesh, { volume = 1.0, loop = false } = 
     mesh.add(posAudio);
   }
 
-  audioLoader
-    .load(url)
+  loadAudioBuffer(url)
     .then((buffer) => {
       posAudio.setBuffer(buffer);
       posAudio.setVolume(volume);
