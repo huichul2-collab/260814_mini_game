@@ -4,6 +4,22 @@
 
 ---
 
+## 2026-08-15 (12) — Lane E 리뷰·merge + GLB 파이프라인 실제 연결(M3 착수)
+
+**리뷰**: Lane C 때처럼 브랜치 체크아웃 없이 `git show`로 5개 파일(`loaders.js`/`restyle.js`/`normalize.js`/`audio.js`/`gate.js`) 전부 읽고 지시서 대조. `main gemini/lane-e-assets-audio` diff가 `main.js`/`core/loop.js`/`world/rooms/livingRoom.js`까지 크게 바뀐 것처럼 나와서 처음엔 off-limits 위반을 의심했으나, `git diff 85179ec 11c6e74 -- game/main.js game/src/core/loop.js`가 빈 diff임을 확인 — Lane E는 그 파일들을 건드린 적 없고, 이 브랜치가 M1/Lane C 이전 시점에서 분기된 뒤 한 번도 rebase 안 해서 생긴 착시였다. 실제 diff(`407d737..gemini/lane-e-assets-audio`)는 지시서 범위 그대로.
+
+**품질**: `restyle.js`의 REPLACE 색상 폴백이 지시서보다 한 단계 더 있음(paletteMap→HSL최근접→이름해시→하드코딩 기본값, 4단계). `Math.random()` 대신 결정론적 해시 사용 이유까지 주석으로 남김. `audio.js`/`gate.js` 전부 지시서의 함정(리스너는 camera 자식, PositionalAudio linear/1.5/10/1, 오디오 게이트는 index.html 안 건드리고 DOM 주입 + 클릭 핸들러 안에서 resume)을 정확히 지킴.
+
+**merge**: `dev-log.md`(Lane C 때와 같은 방식으로 라벨 붙여 보존) + `tools/render-check/shot.mjs`(둘 다 독립적으로 만든 동일 기능의 CLI 인자, Lane E 버전 채택) 충돌 2건 해결.
+
+**부수 발견**: merge 도중 `game/assets/audio/test.mp3`(4.1MB, untracked, 방금 막 생성된 타임스탬프)를 발견 — 브랜치 커밋엔 없던 파일이라 merge에 포함 안 하고 그대로 둠(제가 지울 게 아님).
+
+**M3 착수 — 실제 연결**: `main.js`에 `loadGLTF`+`restyle`+`fitHeight` 연결, `cubone.glb`를 책상 위에 KEEP 모드로 로드. 렌더 확인 결과 콘솔 에러 없음, `logMaterials()` 출력에서 실제 색상값(흰색/검정/주황 #ff9b00/청록 #009789 등, 텍스처 없음 — 사전검사와 일치) 확인. 책상 위에 작은 피규어로 정상 배치됨.
+
+**커밋**: `7ace6da`(Lane E merge) → `d9c3f84`(GLB 연결), 둘 다 push 완료. 아직 걷는 캐릭터(리깅된 에셋)는 미해결 — M3의 나머지 절반.
+
+---
+
 ## 2026-08-15 (11) — 사용자 리포트: 방 오른쪽 하단 침범/깨짐 → 수정
 
 **증상**: 사용자가 실제 브라우저에서 확인 후 "배경 지형이 방을 침범한 듯 보이고 오른쪽 하단이 깨져 보인다"고 리포트.
