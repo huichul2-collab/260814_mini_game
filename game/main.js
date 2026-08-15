@@ -10,6 +10,9 @@ import { createPlayer } from './src/player/character.js';
 import { initController } from './src/player/controller.js';
 import { createFollowCamera } from './src/camera/followCamera.js';
 import { createComposer } from './src/render/post/composer.js';
+import { loadGLTF } from './src/assets/loaders.js';
+import { restyle, Restyle, logMaterials } from './src/assets/restyle.js';
+import { fitHeight } from './src/assets/normalize.js';
 
 /* ------------------------------------------------------------------ *
  *  부트스트랩 전용 파일 (로드맵 §3 "main.js는 통합자 전용").
@@ -26,8 +29,22 @@ const hintEl = document.getElementById('hint');
 scene.add(createSkyDome());
 setupFog(scene);
 setupLighting(scene);
-createLivingRoom(scene, camera, renderer);
+const livingRoom = createLivingRoom(scene, camera, renderer);
 createExterior(scene); // 안개가 걸릴 원경 지형 — 이게 없으면 fog가 눈에 안 보인다
+
+// ---------- M3 텍스처 실습: 책상 위 소품으로 GLB 하나 얹어보기 ----------
+// cubone.glb는 애니메이션·스킨 없는 정적 메시라 걷는 캐릭터로는 못 쓰지만
+// (사전검사 결과, dev-log 참고), restyle 파이프라인 검증용 소품으로는 충분하다.
+loadGLTF('./assets/glb/cubone.glb')
+  .then((gltf) => {
+    const model = gltf.scene;
+    fitHeight(model, 0.22); // 책상 위에 올려둘 작은 피규어 크기
+    restyle(model, { mode: Restyle.KEEP }); // 원본 재질 유지 + Lambert로 강등
+    logMaterials(model); // 콘솔에서 재질 구성 확인 가능
+    model.position.set(0.3, 0.75, -0.05); // 책상 위, 머그컵 반대쪽
+    livingRoom.desk.add(model);
+  })
+  .catch((err) => console.warn('[cubone] 로드 실패:', err));
 
 const player = createPlayer(scene, [0, 0, 1.2]); // 방 앞쪽, 가구와 안 겹치는 스폰 위치
 rebuildFrom(scene); // 플레이어는 solid 태그가 없으니 자기 자신과는 안 부딪힘
