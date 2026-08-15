@@ -4,6 +4,24 @@
 
 ---
 
+## 2026-08-15 (13) — 오디오 게이트 연결 + AudioLoader Promise 버그 발견·수정
+
+**요청**: 사용자가 `game/assets/audio/test.mp3`(직접 넣어둔 테스트용 mp3)를 `playBGM()`으로 재생되게 해달라고 요청.
+
+**연결**: `main.js`에 `initAudioGate`(로딩 오버레이를 "게임 시작" 버튼으로) + `playBGM` 연결. 기존엔 로딩 오버레이가 무조건 즉시 사라졌는데, 이제 버튼 클릭 시에만(오토플레이 정책 우회) 사라지고 그 안에서 BGM이 재생됨.
+
+**발견한 진짜 버그**: `THREE.AudioLoader.load(url, onLoad, onProgress, onError)`는 콜백 방식이라 반환값이 없는데, `audio.js`의 `playBGM`/`createSfxPool`/`createPositionalSfx` 셋 다 `audioLoader.load(url).then(...)` 형태로 호출해서 **`undefined.then()`이 즉시 터졌다.** 게다가 `gate.js`의 `onStart()` 호출이 try/catch로 안 감싸져 있어서 이 예외가 로딩 오버레이 페이드아웃까지 막아버림 — 즉 실제 플레이어라면 "게임 시작"을 눌러도 오디오도 안 나오고 화면도 안 넘어가서 **게임 진입 자체가 막히는 심각한 버그**였다.
+
+**수정**: `loaders.js`에 `loadAudioBuffer(url)` 추가(콜백을 Promise로 감쌈, `loadGLTF`/`loadTexture`와 같은 패턴), `audio.js` 세 함수 전부 이걸 쓰도록 교체. `gate.js`의 `onStart()` 호출도 try/catch로 감싸서, 앞으로 비슷한 재생 버그가 생겨도 "소리만 안 남"으로 그치고 "게임 자체가 안 열림"으로는 안 번지게 방어.
+
+**검증**: `tools/render-check/audio-check.mjs`(신규) — puppeteer의 **CDP 레벨 클릭**(`page.click`, 합성 DOM 클릭 아님 — 오토플레이 정책은 신뢰된 입력 이벤트만 통과시킴)으로 "게임 시작" 버튼을 실제로 눌러서 확인. 결과: `AudioContext.state='running'`, `isPlaying=true`, `hasBuffer=true`, `volume=0.4`(요청값과 일치), 로딩 오버레이 정상 제거. 수정 전엔 전부 실패했었음(재현 후 수정 확인).
+
+**의도적으로 커밋 안 한 것**: `game/assets/audio/test.mp3`(4.1MB) — 파일명 자체가 테스트용 placeholder라 최종 에셋으로 커밋하지 않음. 원하면 알려주면 커밋하거나 최종 BGM으로 교체.
+
+**커밋**: `f4b1396`, push 완료.
+
+---
+
 ## 2026-08-15 (12) — Lane E 리뷰·merge + GLB 파이프라인 실제 연결(M3 착수)
 
 **리뷰**: Lane C 때처럼 브랜치 체크아웃 없이 `git show`로 5개 파일(`loaders.js`/`restyle.js`/`normalize.js`/`audio.js`/`gate.js`) 전부 읽고 지시서 대조. `main gemini/lane-e-assets-audio` diff가 `main.js`/`core/loop.js`/`world/rooms/livingRoom.js`까지 크게 바뀐 것처럼 나와서 처음엔 off-limits 위반을 의심했으나, `git diff 85179ec 11c6e74 -- game/main.js game/src/core/loop.js`가 빈 diff임을 확인 — Lane E는 그 파일들을 건드린 적 없고, 이 브랜치가 M1/Lane C 이전 시점에서 분기된 뒤 한 번도 rebase 안 해서 생긴 착시였다. 실제 diff(`407d737..gemini/lane-e-assets-audio`)는 지시서 범위 그대로.
