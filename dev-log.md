@@ -140,6 +140,27 @@ R/G·B/G가 재질 원본 비율에 최대한 가깝게 살아남도록.
 
 ---
 
+## 2026-08-15 (15) — Gemini Lane: 걷는 캐릭터 (리깅 + 애니메이션) 구현 및 검증 완료 (원문, Lane Character 작성)
+
+**캐릭터 GLB 에셋 확보 및 사전검사**:
+- Three.js 공식 오픈소스 `RobotExpressive.glb` (Tom de Smedt / three.js contributors, CC0 / MIT) 선택 후 `game/assets/glb/character-robot.glb`로 저장.
+- GLB 헤더 사전검사로 animations: 14, skins: 2, clip names: ['Walking', 'Idle', 'Standing', 'Running', ...] 확보 확인 (animations/skins > 0 검증 완료).
+- `ATTRIBUTION.md` 생성 및 출처 정보 기록.
+
+**`character.js` 모듈 재작성**:
+- `createPlayer(scene, spawn)` 반환 계약 `{ root, radius: PLAYER.radius }` (root: THREE.Group, radius: number) 100% 준수.
+- `PLAYER.height`(1.7m) 스케일 맞춤 (`fitHeight`), 바닥 접지 (`dropToFloor`), 조명 톤 정렬 (`restyle` KEEP 모드 적용).
+- `THREE.AnimationMixer` 연결 및 대소문자/부분일치 키워드 탐색(`findClip`) 기반 `walk`, `idle` 액션 자동 바인딩.
+- `core/loop.js`의 `onFrame` (`Phase.SIM`)에서 `player/input.js`의 `getMoveAxis()` (WASD) 상태에 따라 idle ↔ walk 애니메이션 모션 크로스페이드 전환 처리 (`controller.js` 미수정).
+
+**검증 및 가이드라인 준수**:
+- `game/_scratch/preview_char.html` / `preview_char.js` 스크래치 테스트 및 `tools/render-check/shot.mjs` 헤드리스 렌더링 스크린샷 캡처 완료.
+- `node --check` 및 `node tools/check-imports.mjs` 통과 (38개 파일 대소문자/import 100% 무결성).
+- off-limits 파일(`main.js`, `index.html`, `controller.js`, `world/*`, `camera/*`, `physics/*`, `audio/*`) 수정을 일체 하지 않음을 `git diff --stat origin/main...HEAD`로 최종 확인.
+- 격리된 작업 공간 `C:\Users\hcyang\gemini-workspace\lane-character` 내에서만 안전하게 작업 수행.
+
+---
+
 ## 2026-08-15 (14) — 카메라 휠 줌 추가 + 피치 범위 확장
 
 **요청**: 카메라가 따라오는 건 좋은데 휠 줌이 없고, 시야 움직임/줌 범위가 좁게 느껴진다는 사용자 피드백.
