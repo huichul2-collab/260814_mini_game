@@ -16,6 +16,7 @@ import { restyle, Restyle, logMaterials } from './src/assets/restyle.js';
 import { fitHeight } from './src/assets/normalize.js';
 import { initAudioGate } from './src/audio/gate.js';
 import { playBGM } from './src/audio/audio.js';
+import { initFootsteps } from './src/audio/footsteps.js';
 
 /* ------------------------------------------------------------------ *
  *  부트스트랩 전용 파일 (로드맵 §3 "main.js는 통합자 전용").
@@ -64,8 +65,9 @@ window.__debug = { player, camera, getColliders };
 // #loading 오버레이를 "시작하기" 버튼으로 바꾼다(index.html은 안 건드림, gate.js가 DOM 주입).
 // 클릭 시에만 AudioContext.resume() + BGM 재생이 허용된다.
 initAudioGate(loadingEl, () => {
-  const bgm = playBGM('./assets/audio/test.mp3', { volume: 0.4, loop: true });
+  const bgm = playBGM('./assets/audio/bgm-main.mp3', { volume: 0.4, loop: true });
   window.__debug.bgm = bgm;
+  window.__debug.footsteps = initFootsteps('./assets/audio/sfx-footstep.mp3', 0.38);
 });
 hintEl.classList.remove('hidden');
 setTimeout(() => hintEl.classList.add('hidden'), 6000);

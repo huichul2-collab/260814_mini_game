@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { makeMesh } from '../../render/meshFactory.js';
 import { toonMat } from '../../render/materials.js';
 import { onFrame } from '../../core/loop.js';
+import { createSfxPool } from '../../audio/audio.js';
 
 /* ------------------------------------------------------------------ *
  *  거실 소품 전용 파일 (M4). 바닥·벽·문은 house.js(layout.js 데이터
@@ -121,6 +122,7 @@ export function createLivingRoom(scene, camera, renderer) {
   // 그걸 import하지 않는다 — world 모듈이 camera 모듈을 몰라야 하므로.
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
+  const clickSfx = createSfxPool('./assets/audio/sfx-click.mp3', 2, { volume: 0.8 });
   let lampOn = false;
   let punch = 0;
   let downX = 0;
@@ -153,6 +155,7 @@ export function createLivingRoom(scene, camera, renderer) {
       shadeMat.emissive.set(lampOn ? 0xffb35a : 0x000000);
       shadeMat.emissiveIntensity = lampOn ? 0.9 : 0;
       punch = 1;
+      clickSfx.play();
     }
   }
   renderer.domElement.addEventListener('pointerdown', onPointerDown);

@@ -4,6 +4,30 @@
 
 ---
 
+## 2026-08-16 (21) — gemini/lane-audio-content 리뷰·merge + main.js 연결, "걷는 캐릭터+소리+방4개" 완성
+
+**리뷰**: `git show`/`git diff main...origin/gemini/lane-audio-content`로만 리뷰(체크아웃 없음). 커밋 1개(`22fa804`). `bgm-main.mp3` 1.17MB(예산 1.5MB 이내, 기존 `test.mp3`의 28%), `sfx-footstep.mp3` 1.67KB, `sfx-click.mp3` 1.27KB. `footsteps.js`는 `core/loop.js`+`player/input.js` 읽기 전용만 쓰는 자체완결 모듈, off-limits 무침범 확인.
+
+**충돌 2건 (Job 2와 같은 패턴)**: `ATTRIBUTION.md`는 add/add — 헤더 하나로 합쳐 캐릭터+오디오 항목 모두 나열. `dev-log.md`는 Job 2 때와 동일하게 같은 지점에서 갈라진 두 "(15)/(16)" 계열 항목 — 번호 중복 감수하고 둘 다 살림(`(원문, Lane Audio Content 작성)` 표기).
+
+**`main.js` 연결**: `playBGM` 대상 `test.mp3`→`bgm-main.mp3`. `initFootsteps()`를 오디오 게이트 콜백 안(BGM 재생 직후)에서 호출 — 게이트 이전엔 `AudioContext`가 suspended라 발소리도 같은 제약을 받아야 함.
+
+**램프 클릭 sfx 연결**: `world/rooms/livingRoom.js`(M4부터 2층 소유)의 `onPointerUp`에서 램프 토글이 실제로 성립할 때(`hits.length > 0` 안)만 `clickSfx.play()`. `createSfxPool` 풀을 컴포넌트 생성 시점에 만들어두고 로드는 비동기로 흘러가게 함 — 기존 발소리/BGM 패턴과 동일.
+
+**`test.mp3`(4.1MB) 삭제**: 애초에 git에 커밋된 적 없는 로컬 전용 테스트 파일이라(`.gitignore`에도 없음) 단순 파일 삭제만으로 정리 끝.
+
+**`audio-check.mjs` 재작성**: 기존엔 상태를 출력만 하고 pass/fail 판정이 없었음 — OK/FAIL 어서션과 `exit(1)`을 추가하고, 발소리 검사 3단계를 새로 넣음: (a) 정지 상태에서 발소리 없음 (b) W 이동 중 1.5초 내 발소리 최소 1회 (c) 키를 떼면 다시 멈춤. 이걸 위해 `initFootsteps()`가 이제 `pool`을 반환하도록 살짝 확장(`playBGM`이 `sound`를 반환하는 것과 같은 패턴)하고 `main.js`가 `window.__debug.footsteps`로 노출. 전부 통과.
+
+**회귀 확인**: `m4-rooms.mjs` 13/13, `character-check.mjs` 4항목 전부 유지(오디오 배선은 이동/충돌/애니메이션과 무관함을 재확인).
+
+**죽은 브랜치 정리**: `gemini/lane-c-look`, `gemini/lane-e-assets-audio`는 `git branch --merged main`으로 완전 병합 확인 후 `git push origin --delete`, `git fetch --prune`로 로컬 추적 참조도 정리.
+
+**커밋**: `4015c9e`(merge) → 이 항목이 이어지는 코드 연결/검증 커밋.
+
+**M5 판단**: "걷는 캐릭터 + 소리 + 방 4개"가 갖춰졌다. 방 3개(bedA/study/bedB)는 아직 뼈대뿐이라 `gemini/lane-rooms`(새 커밋 `e79a423`, 리뷰 대기) 드레싱이 M5 배포의 마지막 게이트로 남아있음 — 구조·이동·오디오는 배포 판단을 막는 요소가 아님.
+
+---
+
 ## 2026-08-16 (20) — gemini/lane-character 리뷰·merge + 검증 스크립트 신규
 
 **리뷰 방식**: 체크아웃 없이 `git show`/`git diff main...origin/gemini/lane-character`로만 리뷰(공유 폴더 체크아웃 사고 방지 — `dev-log.md` (16)(17) 참고). 커밋 1개(`18c2246`), 변경 6개 파일.
