@@ -5,6 +5,9 @@ import { createSkyDome, setupFog } from './src/render/sky.js';
 import { setupLighting } from './src/render/lighting.js';
 import { createHouse } from './src/world/house.js';
 import { createLivingRoom } from './src/world/rooms/livingRoom.js';
+import { createBedA } from './src/world/rooms/bedA.js';
+import { createStudy } from './src/world/rooms/study.js';
+import { createBedB } from './src/world/rooms/bedB.js';
 import { createExterior } from './src/world/exterior.js';
 import { rebuildFrom, getColliders } from './src/physics/colliders.js';
 import { createPlayer } from './src/player/character.js';
@@ -33,8 +36,11 @@ const hintEl = document.getElementById('hint');
 scene.add(createSkyDome());
 setupFog(scene);
 setupLighting(scene);
-createHouse(scene); // M4: layout.js 기반 바닥·벽·문. 방 3개(bedA/study/bedB)는 아직 뼈대만 — 소품은 gemini/lane-rooms
+createHouse(scene); // M4: layout.js 기반 바닥·벽·문
 const livingRoom = createLivingRoom(scene, camera, renderer);
+createBedA(scene);
+createStudy(scene);
+createBedB(scene);
 createExterior(scene); // 안개가 걸릴 원경 지형 — 이게 없으면 fog가 눈에 안 보인다
 
 // ---------- M3 텍스처 실습: 책상 위 소품으로 GLB 하나 얹어보기 ----------

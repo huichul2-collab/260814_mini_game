@@ -4,6 +4,36 @@
 
 ---
 
+## 2026-08-16 (22) — gemini/lane-rooms: merge 대신 파일만 건짐(사고 방지) + 방 3개 드레싱 + 카메라 프레이밍
+
+**사전 경고**: 사용자가 `gemini/lane-rooms`는 964a265에서 분기한 뒤 origin/main을 안 받아왔고 금지 파일(`render/lighting.js`, `GradeGrainVignetteShader.js`)을 건드렸다며 **merge하지 말라**고 명시. 실제로 `git diff 0cfcaf8...origin/gemini/lane-rooms --stat`으로 확인해보니 Gemini의 커밋(`e79a423`) 자체는 그 두 파일을 건드리지 않았다(room 파일 3개 + dev-log만 변경) — 다만 브랜치가 `0cfcaf8`(내 5ea751b 재작업 이전 커밋)에서 멈춰있었던 건 사실이라, **평범한 3-way merge를 했다면 위험하지 않았겠지만**(한쪽만 바뀐 파일은 충돌 없이 최신 쪽으로 자동 해결됨) 지시대로 `git checkout origin/gemini/lane-rooms -- <path>`로 필요한 파일 3개(+선택적으로 preview 스크래치 2개)만 가져와 리스크를 원천 차단.
+
+**리뷰(방 3개 소품)**: import 경로 정상(`check-imports.mjs` 44개 파일 통과), solid 태그가 대형 가구에만 붙음, 문 개구부 1.0m 클리어런스 손계산으로 3개 문 전부 확인(위반 없음), 소품이 방 경계(벽 안쪽면 0.06m) 안에 전부 들어감(손계산). 코드 수정 없이 그대로 승인.
+
+**main.js 연결**: `createBedA/createStudy/createBedB`를 `createLivingRoom` 다음, `rebuildFrom(scene)`·`createFollowCamera` 이전에 삽입 — 3줄만 추가, 별도 배선 불필요.
+
+**m4-rooms.mjs 재발 버그(진짜 게임 버그 아님)**: "D1 가장자리 → bedA" 레그의 하드코딩 목표(-0.9,-5)가 새로 생긴 침대 프레임(solid, Z[-6.79,-4.89]) 안에 들어가버려 도달 불가. 문 통과 여부만 확인하면 되므로 목표를 침대 앞 안전지대(Z=-3.6)로 당김 — (17)에서 겪은 것과 같은 클래스의 사고("테스트 하드코딩 좌표가 새 콘텐츠와 우연히 겹침").
+
+**room-tint-check.mjs 클리핑 기준 완화**: 0.5%→1.5%(지시대로). 실측 결과 클리핑은 오히려 전부 0.00%였음 — 새 캐릭터 모델(사용자가 직접 교체, 아래 참고)의 재질이 이전 로봇의 금색 하이라이트만큼 반사가 강하지 않아서로 추정.
+
+**room-tint-check.mjs 패치 재조정(3차)**: 기존 패치(x 160/660, y 380)가 방마다 다른 가구(옷장/침대/책장)와 겹쳐 수치가 크게 흔들림(bedB R/G 1.87로 기준 초과, bedA는 아예 딴 색). 육안 스크린샷만으론 원인을 못 잡아서 **grid-scan 스크립트를 임시로 작성**해 4방의 x140~330·y400~495 구간을 20px 간격으로 픽셀 스캔 → x205~240·y440~465가 4방 전부에서 가구·러그·벽을 피한 유일한 순수 바닥 구간임을 확인, 단일 패치(35×25)로 교체. 결과: 4방 전부 R/G 1.60~1.72, B/G 0.66~0.72로 매우 좁게 수렴(이전엔 방마다 들쭉날쭉).
+
+**카메라 프레이밍**: `initialDistance` 4.0→4.5(+`minDistance`/`maxDistance`도 비례 조정). 6.0까지 올려보니 로봇은 작아졌지만 **새로운 버그를 발견**했다 — pitch(0.75rad)가 고정이라 거리가 늘수록 카메라 높이도 같이 올라가고, 캐릭터가 문 근처에 있으면 LOS 레이가 문틀 상인방(WALL_H 2.3m)보다 위를 지나가 충돌판정을 놓쳐 카메라가 옆방(문 너머)까지 날아가버림 — 화면에 뒤집힌 듯한 이중 바닥이 찍힘. 기하학적으로 이 각도에서는 레이 높이가 거리와 무관하게 고정(연직 slope=tan(pitch)이므로)이라 **어떤 거리에서도 이 특정 카메라각+근접 도어 조합에서는 못 피한다** — d=4.8에서 재현, d=4.5까지는 깨끗함을 스크린샷으로 확인 후 그 값으로 고정. 근본 해결(pitch 튜닝)은 범위 밖이라 `config/camera.js` 주석 + STATE.md에 남김.
+
+**세션 중 발견한 별개 사건 — 사용자가 직접 에셋 교체**: 스크린샷을 재생성하던 중 캐릭터가 로봇에서 다른 휴머노이드로 갑자기 바뀜. 조사 결과 `character-robot.glb`(463,988→660,208 bytes)와 `bgm-main.mp3`(1,230,097→4,184,621 bytes, 후자는 예전에 지운 test.mp3와 정확히 같은 크기)가 git을 거치지 않고 직접 덮어써져 있었고 `_old` 백업이 남아있었다. 살아있는 Antigravity/Gemini 프로세스는 없었음(`Get-CimInstance Win32_Process` 확인) — 사용자에게 확인한 결과 **본인이 직접 바꾼 것, 무시하고 계속하라**는 답변. 새 캐릭터는 유효한 GLB(24개 애니메이션, Idle/Walk 포함)라 `character-check.mjs`는 그대로 통과했지만, `findClip`이 'Attacking_Idle'을 'Idle'보다 먼저 매치해 정지 포즈가 살짝 어색해짐(3층 소유 파일이라 미수정, STATE.md에 기록). BGM은 예산(1.5MB)을 다시 초과한 상태 — 사용자가 인지하고 있으므로 그대로 둠. `ATTRIBUTION.md`는 갱신하지 않음(새 에셋 출처를 모름, 오늘 범위 밖).
+
+**audio-check.mjs 견고화**: 위 사건으로 BGM 파일 크기가 세션 중에도 바뀔 수 있다는 게 실증됐다 — 기존 고정 `sleep(1500)`이 4.2MB 파일 앞에서 타임아웃돼 FAIL. 폴링 방식(최대 8초, `isPlaying`이 될 때까지)으로 교체해 파일 크기와 무관하게 동작하도록 함.
+
+**죽은 브랜치**: `gemini/lane-rooms`를 origin에서 삭제(파일만 건졌으니). `gemini/lane-character`/`lane-audio-content`는 merge 완료됐지만 이번엔 삭제 지시 없어서 남겨둠.
+
+**`STATE.md`에 재발 방지 규칙 추가(불변 규칙 #6)**: "레인은 작업 시작 전 `git merge origin/main`을 반드시 하고, 그 결과를 커밋 하나로 먼저 push한다" — 다음 레인 지시서부터 이 규칙을 명시적 0번 단계로 넣을 것.
+
+**최종 검증**: `layout-check.mjs` 7/7, `m4-rooms.mjs` 13/13, `character-check.mjs` 4/4, `audio-check.mjs` 4/4, `room-tint-check.mjs` 4/4, `check-imports.mjs` 44개 파일 — 전부 통과.
+
+**M5 판단**: 기술적으로 배포 판단 가능한 상태. 구조(방 4개)·이동·캐릭터·오디오·소품 드레싱 전부 완료. 남은 건 사용자의 최종 배포 결정뿐.
+
+---
+
 ## 2026-08-16 (21) — gemini/lane-audio-content 리뷰·merge + main.js 연결, "걷는 캐릭터+소리+방4개" 완성
 
 **리뷰**: `git show`/`git diff main...origin/gemini/lane-audio-content`로만 리뷰(체크아웃 없음). 커밋 1개(`22fa804`). `bgm-main.mp3` 1.17MB(예산 1.5MB 이내, 기존 `test.mp3`의 28%), `sfx-footstep.mp3` 1.67KB, `sfx-click.mp3` 1.27KB. `footsteps.js`는 `core/loop.js`+`player/input.js` 읽기 전용만 쓰는 자체완결 모듈, off-limits 무침범 확인.

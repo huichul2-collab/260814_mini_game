@@ -59,20 +59,27 @@ console.log(`${before.hasButton ? 'OK  ' : 'FAIL'} 시작 버튼 존재: ${befor
 if (!before.hasButton) failures.push('#audio-start-btn 없음');
 
 // ---------- BGM 게이트 ----------
+// ⚠️ 고정 sleep이 아니라 폴링으로 대기한다 — BGM 파일 용량이 세션마다
+// 바뀔 수 있어(실제로 1.17MB↔4.1MB를 오간 적 있음) 고정 시간은 깨지기 쉽다.
 console.log('--- BGM 게이트 ---');
 await page.click('#audio-start-btn');
-await sleep(1500); // bgm-main.mp3는 1.17MB라 예전 test.mp3(4.1MB)보다 훨씬 빨리 디코드됨
 
-const after = await page.evaluate(() => {
-  const bgm = window.__debug && window.__debug.bgm;
-  return {
-    contextState: bgm ? bgm.context.state : 'no-bgm',
-    isPlaying: bgm ? bgm.isPlaying : null,
-    hasBuffer: bgm ? !!bgm.buffer : null,
-    loadingGone: !document.getElementById('loading'),
-  };
-});
-console.log('클릭 후 상태:', after);
+let after = null;
+const bgmWaitStart = Date.now();
+while (Date.now() - bgmWaitStart < 8000) {
+  after = await page.evaluate(() => {
+    const bgm = window.__debug && window.__debug.bgm;
+    return {
+      contextState: bgm ? bgm.context.state : 'no-bgm',
+      isPlaying: bgm ? bgm.isPlaying : null,
+      hasBuffer: bgm ? !!bgm.buffer : null,
+      loadingGone: !document.getElementById('loading'),
+    };
+  });
+  if (after.isPlaying) break;
+  await sleep(200);
+}
+console.log(`클릭 후 상태(${Date.now() - bgmWaitStart}ms 대기):`, after);
 const bgmOk = after.contextState === 'running' && after.isPlaying === true && after.hasBuffer === true;
 console.log(`${bgmOk ? 'OK  ' : 'FAIL'} BGM 재생 중`);
 if (!bgmOk) failures.push('BGM이 게이트 클릭 후 재생 상태가 아님');
