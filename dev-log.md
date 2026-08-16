@@ -4,6 +4,24 @@
 
 ---
 
+## 2026-08-16 (23) — 배포 전 정리 3건: findClip 정확일치, BGM 재인코딩, 출처 정리
+
+**1. `findClip` 정확일치 우선 + 폴백**: 기존엔 `includes()` 부분일치만 써서 idle 검색이 클립 배열 0번인 'Attacking_Idle'을 11번 'Idle'보다 먼저 잡았다((22)에서 발견, 3층 소유 파일이라 미수정 상태로 남겨뒀던 것). 정확 일치(`name.toLowerCase() === kw`)를 키워드 전체에 대해 먼저 시도하고, 그래도 없으면 기존 부분일치로 폴백하도록 수정 — `player/character.js`는 3층 소유지만 배포 전 정리 명목으로 이번엔 예외적으로 직접 수정(사용자 명시 지시). `character-check.mjs`의 idle 검사도 `includes` → 정확히 `'idle'`인지로 강화. 재실행 결과 `currentAction="Idle"` 확인.
+
+**2. `bgm-main.mp3` 재인코딩**: 원본 174초/192kbps스테레오/4.18MB → 원본을 `bgm-main_source.mp3`로 보관(`.gitignore` 추가, 커밋 안 함) 후 ffmpeg으로 재인코딩. "자연스러운 루프 지점"을 찾으려고 `silencedetect`(−22dB까지)와 1초 단위 RMS 스캔(`astats`)으로 전체 트랙의 라우드니스 곡선을 뽑아봤는데, **끝부분(170초 근처) 외엔 무음/저음 구간이 전혀 없었다** — RMS가 82~118초 구간 내내 −14.1~−14.4dB로 거의 평탄(AI 생성 앰비언트 패드 특유의 지속음이라 뚜렷한 프레이즈 경계가 없음). 자를 지점을 찾는 대신, 지시받은 100초 지점에서 자르고 마지막 2.5초에 페이드아웃(`afade=t=out:st=97.5:d=2.5`)을 넣어 컷을 감춤 — 이 상황에선 이게 "자연스러운 루프"에 가장 가까운 실질적 방법. 모노+96kbps로 재인코딩. 결과: 100.05초, 1,200,946B(1.14MB) — 목표(약 1.14MB)와 정확히 일치.
+
+**3. `ATTRIBUTION.md` 갱신**:
+- `character-robot.glb`: 사용자에게 출처를 물어봄 → https://poly.pizza/m/DgOCW9ZCRJ ("Character Animated" by Quaternius, CC0, 2021-09-30 게시) 확인, WebFetch로 재검증 후 기재.
+- `bgm-main.mp3`: 사용자 언급대로 파일 헤더(ID3 GEOB 프레임, offset 0~6075바이트)에서 **C2PA 메타데이터를 직접 파싱**해 확인 — 발급자 Google C2PA Media Services, 생성기 "Google C2PA Core Generator Library", 액션 기록 `c2pa.created`="Created by Google Generative AI", `c2pa.edited`="Applied imperceptible SynthID watermark" (둘 다 `digitalSourceType: trainedAlgorithmicMedia`). **AI 생성물임을 그대로 명시**하고 재인코딩 이력(174s/4.2MB→100s/모노/96kbps/1.14MB)도 기록. GLB 쪽은 `asset.generator`(FBX2glTF)만 있고 copyright/extras 메타데이터 없음 — 파일 자체로는 출처를 알 수 없어서 사용자 확인이 필수였음.
+
+**4. `_old` 백업 삭제**: `bgm-main_old.mp3`(1.17MB, 둘 다 커밋된 적 없는 untracked 파일이었음 재확인 후 삭제), `character-robot_old.glb`(464KB) 삭제.
+
+**재검증**: `layout-check.mjs` 7/7, `m4-rooms.mjs` 13/13, `character-check.mjs` 4/4(idle 정확일치 포함), `audio-check.mjs` 4/4(BGM 디코드 934ms — 재인코딩 전 1.5초 폴링 필요했던 것과 대비), `room-tint-check.mjs` 4/4, `check-imports.mjs` 44개 파일. 스크린샷 4장 재생성.
+
+**`game/` 폴더 용량**(`_scratch` 제외): git 추적 기준(실제 배포될 파일) **2.85MB** — 목표 4MB 이내. 디스크상 원본(`bgm-main_source.mp3`, gitignore돼서 배포에서 빠짐) 포함하면 6.84MB.
+
+---
+
 ## 2026-08-16 (22) — gemini/lane-rooms: merge 대신 파일만 건짐(사고 방지) + 방 3개 드레싱 + 카메라 프레이밍
 
 **사전 경고**: 사용자가 `gemini/lane-rooms`는 964a265에서 분기한 뒤 origin/main을 안 받아왔고 금지 파일(`render/lighting.js`, `GradeGrainVignetteShader.js`)을 건드렸다며 **merge하지 말라**고 명시. 실제로 `git diff 0cfcaf8...origin/gemini/lane-rooms --stat`으로 확인해보니 Gemini의 커밋(`e79a423`) 자체는 그 두 파일을 건드리지 않았다(room 파일 3개 + dev-log만 변경) — 다만 브랜치가 `0cfcaf8`(내 5ea751b 재작업 이전 커밋)에서 멈춰있었던 건 사실이라, **평범한 3-way merge를 했다면 위험하지 않았겠지만**(한쪽만 바뀐 파일은 충돌 없이 최신 쪽으로 자동 해결됨) 지시대로 `git checkout origin/gemini/lane-rooms -- <path>`로 필요한 파일 3개(+선택적으로 preview 스크래치 2개)만 가져와 리스크를 원천 차단.

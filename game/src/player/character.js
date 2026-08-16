@@ -7,10 +7,19 @@ import { onFrame, Phase } from '../core/loop.js';
 import { getMoveAxis } from './input.js';
 
 /**
- * 대소문자 구분 없이 키워드 기반으로 애니메이션 클립을 찾는 헬퍼 함수
+ * 대소문자 구분 없이 키워드 기반으로 애니메이션 클립을 찾는 헬퍼 함수.
+ * 정확 일치를 먼저 시도하고, 그래도 못 찾으면 부분일치로 폴백한다.
+ * ⚠️ 부분일치만 쓰면 'idle' 검색이 'Idle'보다 배열에서 먼저 나오는
+ * 'Attacking_Idle' 같은 클립을 잘못 집을 수 있다(실제로 겪은 버그 —
+ * character-robot.glb의 애니메이션 배열에서 Attacking_Idle이 Idle보다
+ * 앞에 있었음).
  */
 function findClip(animations, keywords) {
   if (!animations || !animations.length) return null;
+  for (const kw of keywords) {
+    const exact = animations.find((a) => a.name.toLowerCase() === kw.toLowerCase());
+    if (exact) return exact;
+  }
   for (const kw of keywords) {
     const found = animations.find((a) => a.name.toLowerCase().includes(kw.toLowerCase()));
     if (found) return found;

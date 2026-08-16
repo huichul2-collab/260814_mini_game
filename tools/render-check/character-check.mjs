@@ -92,10 +92,15 @@ if (info.hasMixer) {
 }
 
 // ---------- 정지 상태: idle 액션 ----------
+// ⚠️ includes()만 쓰면 'Attacking_Idle'처럼 idle을 포함하지만 진짜 대기
+// 포즈가 아닌 클립을 잘못 집어도 통과해버린다(실제로 겪은 버그 —
+// findClip이 정확일치를 먼저 시도하도록 고친 뒤에도 이 검사 자체가
+// 느슨하면 회귀를 못 잡는다). 정확히 'idle'인지까지 확인한다.
 console.log('--- 정지 상태 idle 확인 ---');
-const idleOk = !!(info.currentActionName && info.currentActionName.toLowerCase().includes('idle'));
-console.log(`${idleOk ? 'OK  ' : 'FAIL'} currentAction="${info.currentActionName}"`);
-if (!idleOk) failures.push(`정지 상태 currentAction에 'idle' 없음(${info.currentActionName})`);
+const idleName = (info.currentActionName || '').toLowerCase();
+const idleOk = idleName === 'idle';
+console.log(`${idleOk ? 'OK  ' : 'FAIL'} currentAction="${info.currentActionName}" (정확히 'idle'이어야 함)`);
+if (!idleOk) failures.push(`정지 상태 currentAction이 정확히 'idle'이 아님(${info.currentActionName})`);
 
 // ---------- W 키로 이동: walk 액션으로 전환 ----------
 console.log('--- W 이동 중 walk 확인 ---');
