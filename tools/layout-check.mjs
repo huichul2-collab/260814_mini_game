@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // M4 레이아웃 정적 검증 — 순수 node, 브라우저 불필요.
-// docs/spec/M4-layout.md §6.1의 7개 검사를 layout.js/config/player.js
+// docs/spec/M4-layout.md §6.1 및 §9의 검사를 layout.js/config/player.js
 // 데이터만 읽어서 수행한다. 전부 통과해야 exit 0, 하나라도 실패하면 exit 1.
-import { ROOMS, WALLS, DOORS, WALL_T } from '../game/src/world/layout.js';
+import { ROOMS, WALLS, DOORS, WINDOWS, WALL_T, WALL_H } from '../game/src/world/layout.js';
 import { PLAYER } from '../game/src/config/player.js';
 
 let failures = 0;
@@ -27,8 +27,6 @@ function wallAABB(axis, at, from, to) {
 }
 
 // ---------- 1. 모든 벽이 축정렬 ----------
-// layout.js의 스키마 자체가 axis:'x'|'z' + from<to로만 벽을 표현할 수 있어서
-// 대각선 벽은 구조적으로 불가능하다. 여기서는 axis 값 유효성과 from<to만 확인.
 {
   const bad = [];
   WALLS.forEach((w, i) => {
@@ -101,11 +99,7 @@ function wallAABB(axis, at, from, to) {
   check('5. living에서 전체 방 도달 가능', missing.length === 0, missing.join(','));
 }
 
-
 // ---------- 6. 스폰 지점이 벽 콜라이더에서 충분히 떨어짐 ----------
-// 스폰 좌표 [0,0,1.5]는 main.js의 createPlayer() 호출과 반드시 일치해야 한다
-// (docs/spec/M4-layout.md §5.3). 소품 콜라이더는 layout.js에 없는 정보라
-// 이 스크립트 범위 밖 — m4-rooms.mjs가 실행 시점에 간접 검증한다.
 {
   const spawn = { x: 0, z: 1.5 };
   const colliders = [];
@@ -145,7 +139,43 @@ function wallAABB(axis, at, from, to) {
   check('7. 벽 외곽선 폐합(끝점마다 짝 있음)', dangling.length === 0, dangling.join('; '));
 }
 
+// ---------- 8. 창문 사양 검증 (B-4b) ----------
+{
+  const details = [];
+  for (const wall of WALLS) {
+    if (!wall.windowId) continue;
+    const win = WINDOWS[wall.windowId];
+    if (!win) {
+      details.push(`${wall.windowId}: 창문 정의 없음`);
+      continue;
+    }
+    const openStart = win.center - win.width / 2;
+    const openEnd = win.center + win.width / 2;
+    const remA = openStart - wall.from;
+    const remB = wall.to - openEnd;
+
+    if (openStart < wall.from || openEnd > wall.to) {
+      details.push(`${wall.windowId}: 창문 개구부가 벽 구간 밖`);
+    }
+    if (remA < 0.1) {
+      details.push(`${wall.windowId}: 좌 잔여 ${remA.toFixed(3)}m (<0.10m)`);
+    }
+    if (remB < 0.1) {
+      details.push(`${wall.windowId}: 우 잔여 ${remB.toFixed(3)}m (<0.10m)`);
+    }
+    if (!(win.y0 > 0 && win.y0 < win.y1 && win.y1 <= WALL_H)) {
+      details.push(`${wall.windowId}: 높이 구간 이상 (y0=${win.y0}, y1=${win.y1}, WALL_H=${WALL_H})`);
+    }
+  }
+  check('8. 창문 개구부 포함 + 잔여조각>=0.10m + 하단 solid존재', details.length === 0, details.join('; '));
+}
+
 console.log('');
-console.log(`벽 조각(생성 예정): ${WALLS.filter((w) => !w.doorId).length} + ${WALLS.filter((w) => w.doorId).length * 3} = ${WALLS.filter((w) => !w.doorId).length + WALLS.filter((w) => w.doorId).length * 3}`);
+const plainWalls = WALLS.filter((w) => !w.doorId && !w.windowId).length; // 10
+const doorWalls = WALLS.filter((w) => w.doorId).length * 3; // 4 * 3 = 12
+const winWalls = WALLS.filter((w) => w.windowId).length * 3; // 3 * 3 = 9 (하단,좌,우 solid조각)
+const totalWallPieces = plainWalls + doorWalls + winWalls;
+
+console.log(`벽 조각 수: 통짜 ${plainWalls} + 문 ${doorWalls} + 창 ${winWalls} = ${totalWallPieces}`);
 console.log(failures === 0 ? '전부 통과' : `${failures}건 실패`);
 process.exit(failures === 0 ? 0 : 1);

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// B-4a 마당 현관문 통과, 울타리 충돌, 3개 창문 뷰포트 검증 및 스크린샷 캡처 스크립트
+// B-4a 마당 현관문 통과, 울타리 충돌, 3개 창문 뷰포트 및 창문 충돌 검증 스크립트
 
 import http from 'node:http';
 import fs from 'node:fs';
@@ -163,38 +163,68 @@ const southPos = await getPos();
 const southFenceOk = southPos.z <= 2.30;
 testResult('남쪽 울타리(Z=2.5) 충돌 차단', southFenceOk, `울타리 밀착 Z=${southPos.z.toFixed(2)}m (<= 2.30m)`);
 
-// ---------- 3. 창문 3개 (W1, W2, W3) 방향 스크린샷 촬영 ----------
-console.log('--- 3. 창문 3개 (W1, W2, W3) 스크린샷 촬영 ---');
+// ---------- 3. 창문 3개 (W1, W2, W3) 충돌 및 관람 스크린샷 ----------
+console.log('--- 3. 창문 3개 충돌 검증 및 스크린샷 촬영 ---');
 
-// W1: bedA 북쪽 창문 (Z = -7, X = -0.5)
+// (a) W1 bedA 북창문 (Z = -7, X = -0.5) 3초간 돌진 및 탈출 불가 검증
 await setPlayerPos(-0.5, 0, -5.8);
+await sleep(200);
 await keyDown('KeyW');
-await sleep(150);
+await sleep(3000);
 await keyUp('KeyW');
+const w1Pos = await getPos();
+const w1Ok = w1Pos.z >= -6.80;
+testResult('W1 창문(bedA 북벽) 3초 돌진 탈출 불가', w1Ok, `최종 Z=${w1Pos.z.toFixed(2)}m (방 내부 Z >= -6.80m)`);
+
+// W1 외부 시점 스크린샷 (집 밖 Z=-8.5에서 남쪽 북벽 W1 관람)
+await setPlayerPos(-0.5, 0, -8.5);
+await keyDown('KeyS');
+await sleep(150);
+await keyUp('KeyS');
 await sleep(1200);
 const winBedAPath = path.join(gameDir, '..', 'tools', 'render-check', 'm4-win-bedA.png');
 await page.screenshot({ path: winBedAPath });
-console.log(`OK   W1 (bedA 북창문) 스크린샷 캡처: ${winBedAPath}`);
+console.log(`OK   W1 (bedA 북창문 외부 시점) 스크린샷 캡처: ${winBedAPath}`);
 
-// W2: study 동쪽 창문 (X = 7, Z = 0.5)
+// (b) W2 study 동창문 (X = 7, Z = 0.5) 3초간 돌진 및 탈출 불가 검증
 await setPlayerPos(5.8, 0, 0.5);
+await sleep(200);
 await keyDown('KeyD');
-await sleep(150);
+await sleep(3000);
 await keyUp('KeyD');
+const w2Pos = await getPos();
+const w2Ok = w2Pos.x <= 6.80;
+testResult('W2 창문(study 동벽) 3초 돌진 탈출 불가', w2Ok, `최종 X=${w2Pos.x.toFixed(2)}m (방 내부 X <= 6.80m)`);
+
+// W2 외부 시점 스크린샷 (집 밖 X=8.5에서 서쪽 동벽 W2 관람)
+await setPlayerPos(8.5, 0, 0.5);
+await keyDown('KeyA');
+await sleep(150);
+await keyUp('KeyA');
 await sleep(1200);
 const winStudyPath = path.join(gameDir, '..', 'tools', 'render-check', 'm4-win-study.png');
 await page.screenshot({ path: winStudyPath });
-console.log(`OK   W2 (study 동창문) 스크린샷 캡처: ${winStudyPath}`);
+console.log(`OK   W2 (study 동창문 외부 시점) 스크린샷 캡처: ${winStudyPath}`);
 
-// W3: bedB 남쪽 창문 (Z = 7, X = 0.0)
+// (c) W3 bedB 남창문 (Z = 7, X = 0.0) 3초간 돌진 및 탈출 불가 검증
 await setPlayerPos(0.0, 0, 5.8);
+await sleep(200);
+await keyDown('KeyS');
+await sleep(3000);
+await keyUp('KeyS');
+const w3Pos = await getPos();
+const w3Ok = w3Pos.z <= 6.80;
+testResult('W3 창문(bedB 남벽) 3초 돌진 탈출 불가', w3Ok, `최종 Z=${w3Pos.z.toFixed(2)}m (방 내부 Z <= 6.80m)`);
+
+// W3 실내 시점 스크린샷 (실내 Z=5.2에서 남쪽 창밖 관람)
+await setPlayerPos(0.0, 0, 5.2);
 await keyDown('KeyS');
 await sleep(150);
 await keyUp('KeyS');
 await sleep(1200);
 const winBedBPath = path.join(gameDir, '..', 'tools', 'render-check', 'm4-win-bedB.png');
 await page.screenshot({ path: winBedBPath });
-console.log(`OK   W3 (bedB 남창문) 스크린샷 캡처: ${winBedBPath}`);
+console.log(`OK   W3 (bedB 남창문 실내 시점) 스크린샷 캡처: ${winBedBPath}`);
 
 await browser.close();
 server.close();

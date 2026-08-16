@@ -18,6 +18,7 @@ export const CAM = {
   dragSensitivity: 0.006,
   // 드래그 시점 회전 반전 — followCamera.js는 이 부호만 읽고 숫자를 직접
   // 흩뿌리지 않는다. true가 기본값(둘 다 반전).
-  invertX: true,
+  invertX: false,
   invertY: true,
 };
+

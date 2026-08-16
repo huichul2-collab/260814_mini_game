@@ -37,8 +37,9 @@ export const YARD = {
   z0: -2.5,
   x1: -3,
   z1: 2.5,
-  floorColor: 0x6e9c53,
+  floorColor: 0x5a7d48,
 };
+
 
 // §9.1 B-4a 마당 울타리 3면
 export const FENCES = [
