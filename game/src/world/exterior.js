@@ -9,12 +9,8 @@ export function createExterior(scene) {
   const group = new THREE.Group();
 
   // 1. 넓은 바깥 지면
-  // M4(docs/spec/M4-layout.md §5.1)로 집이 원점 반경 2.5m → 9.9m(모서리
-  // (7,7))까지 커졌다. 감쇠 시작 반경을 4에서 그대로 두면 집 모서리에서
-  // 변위가 최대 0.236m까지 커져서 바닥(두께 0.12)을 뚫고 올라온다.
-  // → 11로 올림(9.9 < 11, 여유 1.1m). 정점 간격(80/16=5)보다 큰 반경을
-  // 평탄하게 유지하는 게 핵심 — 이 규칙을 어겨서 반경 4 때 실제로
-  // `4464d4e` 버그(땅이 방 모서리를 침범)가 났었다.
+  // B-4a(docs/spec/M4-layout.md §9.1)로 집+마당 footprint가 X[-7,7]·Z[-7,7]까지 커짐.
+  // 지면 감쇠 평탄 반경 11m 유지 (모서리 최대 거리 7.4m < 11m, 여유 3.6m 이상).
   const groundGeo = new THREE.PlaneGeometry(80, 80, 16, 16);
   const pos = groundGeo.attributes.position;
   for (let i = 0; i < pos.count; i++) {
@@ -26,7 +22,7 @@ export function createExterior(scene) {
   }
   groundGeo.computeVertexNormals();
 
-  const groundMat = mat(0x3d5240); // 어두운 숲/풀빛 톤(기존보다 밝혀서 현재 조명에서 완전히 까매 보이지 않게)
+  const groundMat = mat(0x3d5240); // 어두운 숲/풀빛 톤
   const ground = new THREE.Mesh(groundGeo, groundMat);
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.1;
@@ -60,16 +56,26 @@ export function createExterior(scene) {
   const trunkMat = mat(0x4a3222);
   const leavesMat = mat(0x384a32);
 
-  // M4로 집 bbox가 X[-3,7]·Z[-7,7]까지 커지면서, 그걸 1.5m 확장한
-  // X[-4.5,8.5]·Z[-8.5,8.5] 안에 있던 [-4,-5]/[4.5,-4]/[5,4] 세 그루는
-  // 집 안/집 코앞에 박힌다 — 삭제(docs/spec/M4-layout.md §5.1).
-  const treePositions = [
+  const initialTreePositions = [
     [-5.5, 3],
-    [-8, -8], [7, -9], [-10, 5], [9, 7],
-    [-12, -3], [11, -2], [-3, -12], [2, -14]
+    [-8, -8],
+    [7, -9],
+    [-10, 5],
+    [9, 7],
+    [-12, -3],
+    [11, -2],
+    [-3, -12],
+    [2, -14],
   ];
 
-  treePositions.forEach(([x, z]) => {
+  // BBox X[-8.5, 8.5] · Z[-8.5, 8.5] 내부 나무 동적 계산 및 제거
+  const inBBox = ([x, z]) => x >= -8.5 && x <= 8.5 && z >= -8.5 && z <= 8.5;
+  const removedTrees = initialTreePositions.filter(inBBox);
+  const activeTreePositions = initialTreePositions.filter((pt) => !inBBox(pt));
+
+  console.log('[exterior] Removed trees inside house+yard bbox X[-8.5,8.5]·Z[-8.5,8.5]:', removedTrees);
+
+  activeTreePositions.forEach(([x, z]) => {
     const tree = new THREE.Group();
     const trunk = new THREE.Mesh(trunkGeo, trunkMat);
     trunk.position.y = 0.6;

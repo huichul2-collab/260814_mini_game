@@ -5,7 +5,13 @@
  * ------------------------------------------------------------------ */
 const keys = new Set();
 
-window.addEventListener('keydown', (e) => keys.add(e.code));
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Space') {
+    e.preventDefault();
+  }
+  keys.add(e.code);
+});
+
 window.addEventListener('keyup', (e) => keys.delete(e.code));
 window.addEventListener('blur', () => keys.clear()); // 탭 전환 중 키가 눌린 채로 고정되는 것 방지
 
@@ -18,3 +24,8 @@ export function getMoveAxis() {
   if (keys.has('KeyD') || keys.has('ArrowRight')) x += 1;
   return { x, z };
 }
+
+export function isJumpPressed() {
+  return keys.has('Space');
+}
+

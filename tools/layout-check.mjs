@@ -83,10 +83,13 @@ function wallAABB(axis, at, from, to) {
 {
   const adj = {};
   for (const r of ROOMS) adj[r.id] = [];
+  adj['yard'] = [];
   for (const d of Object.values(DOORS)) {
     const [a, b] = d.rooms;
-    adj[a].push(b);
-    adj[b].push(a);
+    if (adj[a] && adj[b]) {
+      adj[a].push(b);
+      adj[b].push(a);
+    }
   }
   const seen = new Set(['living']);
   const stack = ['living'];
@@ -97,6 +100,7 @@ function wallAABB(axis, at, from, to) {
   const missing = ROOMS.filter((r) => !seen.has(r.id)).map((r) => r.id);
   check('5. living에서 전체 방 도달 가능', missing.length === 0, missing.join(','));
 }
+
 
 // ---------- 6. 스폰 지점이 벽 콜라이더에서 충분히 떨어짐 ----------
 // 스폰 좌표 [0,0,1.5]는 main.js의 createPlayer() 호출과 반드시 일치해야 한다

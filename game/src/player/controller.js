@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { onFrame, Phase } from '../core/loop.js';
-import { getMoveAxis } from './input.js';
+import { getMoveAxis, isJumpPressed } from './input.js';
 import { resolve } from '../physics/resolve.js';
 import { getColliders } from '../physics/colliders.js';
 import { PLAYER } from '../config/player.js';
@@ -18,6 +18,8 @@ const _move = new THREE.Vector3();
 
 export function initController(player, getYaw) {
   let facing = 0;
+  let yVel = 0;
+  let yPos = 0;
 
   onFrame((dtRaw) => {
     // 탭 복귀 등으로 dt가 급증하면 한 프레임에 벽을 관통할 수 있어 클램프한다.
@@ -43,6 +45,22 @@ export function initController(player, getYaw) {
       player.root.rotation.y = facing;
     }
 
+    // B-5. 점프 물리 (지면 접촉 yPos<=0 시에만 발동, XZ 충돌은 Y와 독립)
+    if (isJumpPressed() && yPos <= 0) {
+      yVel = PLAYER.jumpSpeed;
+    }
+
+    if (yPos > 0 || yVel > 0) {
+      yVel += PLAYER.gravity * dt;
+      yPos += yVel * dt;
+      if (yPos <= 0) {
+        yPos = 0;
+        yVel = 0;
+      }
+    }
+    player.root.position.y = yPos;
+
     resolve(player.root.position, player.radius, getColliders(), 3);
   }, Phase.SIM);
 }
+
