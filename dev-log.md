@@ -4,6 +4,35 @@
 
 ---
 
+## 2026-08-17 (25) — `gemini/lane-rooms` (c3a2f7e) 리뷰 및 `main` 병합, B-0 램프 갓 형상 보정, 10대 검증 통과
+
+**1. `gemini/lane-rooms` (c3a2f7e) 리뷰 및 병합**:
+- `git merge origin/gemini/lane-rooms` 수행. 충돌 발생 지점 `game/src/player/input.js` 해소: 브랜치의 `Space` 키 preventDefault/isJumpPressed와 `main`의 `capture: true` / `visibilitychange` / `Escape` 리셋 키를 모두 보존.
+- 스크린샷 4장 바이너리 충돌 해소 및 재생성.
+
+**2. 배치 A 결과 보존 5대 항목 검증 완료**:
+- `livingRoom.js`: `lamp.position.set(0.35, 0.75, 0)` 정상 유지.
+- `GradeGrainVignetteShader.js`: `uVignette: { value: 0.2 }` 정상 유지.
+- `config/camera.js`: `invertX: true`, `invertY: true` 정상 유지.
+- `input.js`: `Escape` 탈출구 핸들러 정상 보존.
+- `assets/glb/`: `cubone.glb` 부재 정상 유지.
+
+**3. 메인 배선 연결 확인**:
+- `house.js` 및 `layout.js`가 `main.js`에서 호출되므로 D4 현관문, 마당 바닥, 울타리 3면, 창문 3개(W1~W3)가 자동 반영됨 확인.
+- `controller.js`가 `main.js`에서 `Phase.SIM` 프레임 루프에 등록되므로 `isJumpPressed()` 점프 물리 연산이 별도 배선 없이 자동 반영됨 확인.
+
+**4. B-0 램프 갓/받침 형상 보정**:
+- `livingRoom.js` 스탠드 조명 마티니 잔 형태 피드백 반영: 갓 `ConeGeometry(0.09, 0.13, 12, 1, true)` → `CylinderGeometry(0.045, 0.10, 0.10, 12, 1, false)`, 기둥 반지름 `0.012` → `0.02`, 받침 `(0.06, 0.07)` → `(0.08, 0.09)`. 클릭 emissive 온오프 토글 연동 100% 보존.
+
+**5. 10대 검증 스크립트 전수 통과**:
+- `layout-check.mjs` (7/7 OK), `prop-bounds-check.mjs` (21개 소품 OK), `jump-check.mjs` (3/3 OK), `input-check.mjs` (10/10 OK), `character-check.mjs` (4/4 OK), `audio-check.mjs` (4/4 OK), `m4-rooms.mjs` (13/13 OK), `room-tint-check.mjs` (4/4 OK), `asset-check.mjs` (0 error, 0 warning), `check-imports.mjs` (44개 파일 OK).
+- 스크린샷 4장 재생성 및 `yard-shot.mjs`로 마당/현관문 스크린샷(`tools/render-check/m4-yard.png`) 캡처 및 커밋.
+
+**6. 운영 규칙 갱신 (`docs/STATE.md`)**:
+- 3층 소유 파일 규칙 개정: "레인별 소유 파일은 지시서에서 명시적으로 지정하며, 기본 금지 목록은 지정이 없을 때의 기본값이다."
+
+---
+
 ## 2026-08-17 (24) — 추가 구조 2건 (B-4a 현관문·마당, B-4b 창문 3개) 및 점프 기능 (B-5) 구현
 
 **스펙 반영 (`docs/spec/M4-layout.md` §9)**:

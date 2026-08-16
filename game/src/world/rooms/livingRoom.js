@@ -106,13 +106,12 @@ export function createLivingRoom(scene, camera, renderer) {
   lamp.position.set(0.35, 0.75, 0);
   desk.add(lamp);
 
-  makeMesh(new THREE.CylinderGeometry(0.06, 0.07, 0.02, 12), 0x2e2a3a, lamp, [0, 0.01, 0]);
-  makeMesh(new THREE.CylinderGeometry(0.012, 0.012, 0.22, 8), 0x3a3448, lamp, [0, 0.13, 0]);
+  makeMesh(new THREE.CylinderGeometry(0.08, 0.09, 0.02, 12), 0x2e2a3a, lamp, [0, 0.01, 0]);
+  makeMesh(new THREE.CylinderGeometry(0.02, 0.02, 0.22, 8), 0x3a3448, lamp, [0, 0.13, 0]);
 
   const shadeMat = toonMat(0xffd9a0, { emissive: 0x000000 });
-  const shade = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.13, 12, 1, true), shadeMat);
-  shade.position.set(0, 0.28, 0);
-  shade.rotation.x = Math.PI;
+  const shade = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.10, 0.10, 12, 1, false), shadeMat);
+  shade.position.set(0, 0.26, 0);
   lamp.add(shade);
 
   const bulbLight = new THREE.PointLight(0xffcf8a, 0, 2.2, 2);
