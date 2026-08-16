@@ -2,7 +2,7 @@
 
 > 60줄 유지. 서술 금지, 상태만. 세션 끝에 **Claude Code CLI가 갱신**한다.
 > 배경/경위가 필요하면 `handoff-2026-08-15.md`, 전체 로그는 `dev-log.md`.
-> 최종 갱신: 2026-08-15 (Claude Code CLI)
+> 최종 갱신: 2026-08-17 (Claude Code CLI) — sfx 가짜 음원 교체 + asset-check.mjs 신규
 
 ## 3층 운영규칙
 
@@ -18,6 +18,7 @@
 3. 작업 단위마다 즉시 commit + push. 몰아서 금지
 4. 1층은 `dev-log.md`를 읽지 않는다. 이 파일 + 필요한 소스 1~2개만
 5. 품질 게이트는 사람 리뷰가 아니라 **자동 검증 스크립트**
+6. **레인은 작업 시작 전 `git merge origin/main`을 반드시 하고, 그 결과를 커밋 하나로 먼저 push한다** — `gemini/lane-rooms`가 964a265에서 분기한 뒤 origin/main을 한 번도 안 받아와 최신 커밋 5개(색보정 재작업 포함)가 빠진 채 남아있었던 사고 재발 방지(`dev-log.md` (22))
 
 ## 마일스톤
 
@@ -26,30 +27,28 @@
 | M0 기반 | ✅ |
 | M1 이동/충돌/카메라 (휠 줌 포함) | ✅ |
 | M2 룩 (후처리·안개·바깥지형) | ✅ |
-| M3 (a)에셋 파이프라인 ✅ / (b)걷는 캐릭터 | 🟡 `gemini/lane-character` 대기 |
+| M3 (a)에셋 파이프라인 ✅ / (b)걷는 캐릭터 | ✅ `gemini/lane-character` merge 완료(리깅 로봇+idle/walk, `character-check.mjs` 통과) |
 | **M4 집 4칸 구조** (`layout.js`+`house.js`, 거실 소품) | ✅ 완료 — `layout-check.mjs` 7/7, `m4-rooms.mjs` 13/13 통과 |
-| M4c 방 3개 드레싱 | 🟡 `gemini/lane-rooms` 대기 |
-| M5 배포 (itch.io) | 🔴 M4c 완료 후 판단 |
-| M6 증식 (오디오 시스템 ✅ / 실제 에셋·소품) | 🟡 `gemini/lane-audio-content` 대기 |
+| M4c 방 3개 드레싱 | ✅ 완료 — `gemini/lane-rooms`가 origin/main 안 받아와 merge 대신 소품 파일 3개만 `git checkout`으로 가져옴(`dev-log.md` (22)) |
+| M5 배포 (itch.io) | 🟡 **판단 가능한 상태** — 구조/이동/캐릭터/오디오/방4개 전부 ✅, 사용자 최종 판단만 남음 |
+| M6 증식 (오디오 시스템 ✅ 실제 에셋까지 완료 / 소품) | 🟡 `gemini/lane-audio-content` merge 완료, 소품 추가는 대기 |
 | M7 폴리시 | 🔴 |
 
 ## 브랜치
 
 | 브랜치 | 담당 | 상태 |
 |---|---|---|
-| `main` | 2층 CLI | M4 구조 완료, 다음 작업 대기 |
-| `gemini/lane-character` | 3층 | 대기, 미착수 — 지시서 있음 |
-| `gemini/lane-audio-content` | 3층 | 대기, 미착수 — 지시서 있음 |
-| `gemini/lane-rooms` | 3층 | 대기, 미착수 — 지시서 있음 (M4-9 신규) |
-| `gemini/lane-c-look`, `gemini/lane-e-assets-audio` | — | merge 완료, **삭제 대상** |
+| `main` | 2층 CLI | M4 구조+캐릭터+오디오+방3개 드레싱 전부 완료 |
+| `gemini/lane-character`, `gemini/lane-audio-content` | 3층 | merge 완료 — 삭제 대상(아직 안 지움) |
+| `gemini/lane-rooms` | 3층 | **origin에서 삭제 완료**(파일 3개만 건지고 merge 안 함) |
+| `gemini/lane-c-look`, `gemini/lane-e-assets-audio` | — | **origin에서 삭제 완료**, 로컬 추적 참조도 prune 완료 |
 
 ## 지금 열려 있는 작업 (우선순위)
 
-1. **방 3개 드레싱** — 3층, `gemini/lane-rooms`, 지금 바로 착수 가능
-2. **걷는 캐릭터 / BGM·SFX 에셋** — 3층, 지금 바로 병렬 착수 가능 (전부 파일 무충돌)
-3. 벽 페이드 (`TAG.FADEABLE` 실제 투명도) — 2층, 문 있는 벽 구조가 이제 있으니 착수 가능
-4. 룩 튜닝 (마젠타 치우침) — 아무 때나 5분
-5. M5 배포 판단 — 방 3개 드레싱 완료 후
+1. **M5 배포 판단** — 사용자 몫, 기술적으로는 준비됨
+2. 벽 페이드 (`TAG.FADEABLE` 실제 투명도) — 2층, 문 있는 벽 구조가 이제 있으니 착수 가능
+3. 죽은 브랜치(`gemini/lane-character`, `gemini/lane-audio-content`) origin 삭제 — merge 완료됐으니 아무 때나
+4. 카메라: `maxDistance` 8.0 이상 휠 줌아웃 시 일부 방(문 근처)에서 카메라가 문 개구부를 넘어가는 아티팩트 있음(`config/camera.js` 주석 참고) — pitch 튜닝 필요, 지금은 기본 시야만 조정함
 
 ## 열린 결정 / 미확정
 
@@ -57,3 +56,5 @@
 - 콜라이더 실측 24개(스펙 추정 ~43보다 적음 — 상인방 9개가 의도대로 non-solid라 그렇다, 문제 아님)
 - 현관문(집 밖 출입) 만들지 여부 — M5 이후 판단
 - 안개 far, 카메라 기본 거리 — 6m 방 기준 재확인 아직 안 함
+- **`cubone.glb` 라이선스/IP 재검토 필요** — CC0 아니라 **CC-BY 4.0**(Tipatat Chennavasin, poly.pizza/m/cc7gCdKaQYU), `ATTRIBUTION.md`에 뒤늦게 기재(2026-08-17). "Cubone"은 닌텐도 포켓몬 캐릭터명이라 메시 라이선스와 별개로 상표 문제 가능 — 공개 배포 전 사용자가 교체 여부 판단할 것
+- `sfx-footstep.mp3`/`sfx-click.mp3`가 CC0로 허위 기재된 Gemini 합성 가짜였음 → Kenney CC0(`footstep00.ogg`/`switch1.ogg`)로 교체(2026-08-17). 재발 방지로 `tools/asset-check.mjs` 신규(스펙트럼 평탄도로 합성음 의심 경고, exit 0 — 경고만, 최종판단은 사람)

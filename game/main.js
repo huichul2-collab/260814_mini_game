@@ -5,6 +5,9 @@ import { createSkyDome, setupFog } from './src/render/sky.js';
 import { setupLighting } from './src/render/lighting.js';
 import { createHouse } from './src/world/house.js';
 import { createLivingRoom } from './src/world/rooms/livingRoom.js';
+import { createBedA } from './src/world/rooms/bedA.js';
+import { createStudy } from './src/world/rooms/study.js';
+import { createBedB } from './src/world/rooms/bedB.js';
 import { createExterior } from './src/world/exterior.js';
 import { rebuildFrom, getColliders } from './src/physics/colliders.js';
 import { createPlayer } from './src/player/character.js';
@@ -16,6 +19,7 @@ import { restyle, Restyle, logMaterials } from './src/assets/restyle.js';
 import { fitHeight } from './src/assets/normalize.js';
 import { initAudioGate } from './src/audio/gate.js';
 import { playBGM } from './src/audio/audio.js';
+import { initFootsteps } from './src/audio/footsteps.js';
 
 /* ------------------------------------------------------------------ *
  *  부트스트랩 전용 파일 (로드맵 §3 "main.js는 통합자 전용").
@@ -32,8 +36,11 @@ const hintEl = document.getElementById('hint');
 scene.add(createSkyDome());
 setupFog(scene);
 setupLighting(scene);
-createHouse(scene); // M4: layout.js 기반 바닥·벽·문. 방 3개(bedA/study/bedB)는 아직 뼈대만 — 소품은 gemini/lane-rooms
+createHouse(scene); // M4: layout.js 기반 바닥·벽·문
 const livingRoom = createLivingRoom(scene, camera, renderer);
+createBedA(scene);
+createStudy(scene);
+createBedB(scene);
 createExterior(scene); // 안개가 걸릴 원경 지형 — 이게 없으면 fog가 눈에 안 보인다
 
 // ---------- M3 텍스처 실습: 책상 위 소품으로 GLB 하나 얹어보기 ----------
@@ -64,8 +71,9 @@ window.__debug = { player, camera, getColliders };
 // #loading 오버레이를 "시작하기" 버튼으로 바꾼다(index.html은 안 건드림, gate.js가 DOM 주입).
 // 클릭 시에만 AudioContext.resume() + BGM 재생이 허용된다.
 initAudioGate(loadingEl, () => {
-  const bgm = playBGM('./assets/audio/test.mp3', { volume: 0.4, loop: true });
+  const bgm = playBGM('./assets/audio/bgm-main.mp3', { volume: 0.4, loop: true });
   window.__debug.bgm = bgm;
+  window.__debug.footsteps = initFootsteps('./assets/audio/sfx-footstep.mp3', 0.38);
 });
 hintEl.classList.remove('hidden');
 setTimeout(() => hintEl.classList.add('hidden'), 6000);

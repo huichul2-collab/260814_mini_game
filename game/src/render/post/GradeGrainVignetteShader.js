@@ -6,12 +6,13 @@ export const GradeGrainVignetteShader = {
     tDiffuse: { value: null },
     uTime: { value: 0 },
     uResolution: { value: new THREE.Vector2(1, 1) },
-    // G채널 0.72가 너무 깎여서 전역적으로 붉은기가 과했다(사용자 리포트).
-    // R을 살짝 낮추고 G를 크게 올려 "따뜻한 실내톤"은 유지하되 초록이
-    // 죽지 않게 함. 방별 구분은 이 값이 아니라 lighting.js의 방별
-    // 포인트라이트 색조가 맡는다 — 여기는 전역 톤만 책임진다.
-    uGain: { value: new THREE.Vector3(1.15, 0.92, 0.88) },
-    uLift: { value: new THREE.Vector3(0.05, 0.04, 0.06) },
+    // ⚠️ 이전 값(1.15,0.92,0.88)도 여전히 과다 적색이었다 — 실측(사용자가
+    // 스크린샷 픽셀을 직접 잼): 바닥 R/G 2.39~2.65인데 재질 원본 R/G는
+    // 1.44~1.53. 즉 이 gain이 원본 대비 R/G를 60~70%나 더 붉게 왜곡시킴.
+    // R/G 게인비를 1.25(1.15/0.92)에서 더 낮춰 원본색이 화면에 최대한
+    // 그대로 살아남게 한다. 목표: 바닥 R/G <= 1.8, 따뜻한 톤은 유지.
+    uGain: { value: new THREE.Vector3(0.92, 1.0, 1.25) },
+    uLift: { value: new THREE.Vector3(0.02, 0.03, 0.08) },
     uSaturation: { value: 1.1 },
     uContrast: { value: 1.15 },
     uGrainAmount: { value: 0.06 },
