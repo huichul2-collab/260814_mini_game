@@ -2,7 +2,7 @@
 
 > 60줄 유지. 서술 금지, 상태만. 세션 끝에 **Claude Code CLI가 갱신**한다.
 > 배경/경위가 필요하면 `handoff-2026-08-15.md`, 전체 로그는 `dev-log.md`.
-> 최종 갱신: 2026-08-16 (Claude Code CLI) — M4c 드레싱까지 완료, M5 배포 판단 가능한 상태
+> 최종 갱신: 2026-08-17 (Claude Code CLI) — sfx 가짜 음원 교체 + asset-check.mjs 신규
 
 ## 3층 운영규칙
 
@@ -47,9 +47,8 @@
 
 1. **M5 배포 판단** — 사용자 몫, 기술적으로는 준비됨
 2. 벽 페이드 (`TAG.FADEABLE` 실제 투명도) — 2층, 문 있는 벽 구조가 이제 있으니 착수 가능
-3. `player/character.js`의 `findClip`이 idle 키워드로 'Attacking_Idle'을 'Idle'보다 먼저 매치함(현재 GLB 애니메이션 배열 순서 때문) — 정지 포즈가 살짝 어색함. 3층 소유 파일이라 다음 캐릭터 레인에서 손볼 것
-4. 죽은 브랜치(`gemini/lane-character`, `gemini/lane-audio-content`) origin 삭제 — merge 완료됐으니 아무 때나
-5. 카메라: `maxDistance` 8.0 이상 휠 줌아웃 시 일부 방(문 근처)에서 카메라가 문 개구부를 넘어가는 아티팩트 있음(`config/camera.js` 주석 참고) — pitch 튜닝 필요, 지금은 기본 시야만 조정함
+3. 죽은 브랜치(`gemini/lane-character`, `gemini/lane-audio-content`) origin 삭제 — merge 완료됐으니 아무 때나
+4. 카메라: `maxDistance` 8.0 이상 휠 줌아웃 시 일부 방(문 근처)에서 카메라가 문 개구부를 넘어가는 아티팩트 있음(`config/camera.js` 주석 참고) — pitch 튜닝 필요, 지금은 기본 시야만 조정함
 
 ## 열린 결정 / 미확정
 
@@ -57,4 +56,5 @@
 - 콜라이더 실측 24개(스펙 추정 ~43보다 적음 — 상인방 9개가 의도대로 non-solid라 그렇다, 문제 아님)
 - 현관문(집 밖 출입) 만들지 여부 — M5 이후 판단
 - 안개 far, 카메라 기본 거리 — 6m 방 기준 재확인 아직 안 함
-- `character-robot.glb`(660KB, 애니메이션 24개)·`bgm-main.mp3`(4.2MB)가 사용자가 직접(git 안 거침) 교체함(2026-08-16 22시경) — 기존 `_old` 파일 남아있음. `ATTRIBUTION.md`는 이전 파일 기준이라 새 에셋 출처 미기재, BGM은 예산(1.5MB) 재초과 — 사용자 확인·의도된 상태, 후속 정리 필요하면 사용자가 지시
+- **`cubone.glb` 라이선스/IP 재검토 필요** — CC0 아니라 **CC-BY 4.0**(Tipatat Chennavasin, poly.pizza/m/cc7gCdKaQYU), `ATTRIBUTION.md`에 뒤늦게 기재(2026-08-17). "Cubone"은 닌텐도 포켓몬 캐릭터명이라 메시 라이선스와 별개로 상표 문제 가능 — 공개 배포 전 사용자가 교체 여부 판단할 것
+- `sfx-footstep.mp3`/`sfx-click.mp3`가 CC0로 허위 기재된 Gemini 합성 가짜였음 → Kenney CC0(`footstep00.ogg`/`switch1.ogg`)로 교체(2026-08-17). 재발 방지로 `tools/asset-check.mjs` 신규(스펙트럼 평탄도로 합성음 의심 경고, exit 0 — 경고만, 최종판단은 사람)

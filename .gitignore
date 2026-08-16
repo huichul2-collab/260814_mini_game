@@ -2,9 +2,13 @@ node_modules/
 *.log
 .DS_Store
 Thumbs.db
+.claude/
 tools/render-check/*.png
-# AI 생성 BGM 원본(재인코딩 전 4.2MB) — 배포 페이로드에는 필요 없음
-game/assets/audio/bgm-main_source.mp3
+# AI 생성 BGM 원본(재인코딩 전 4.2MB) — 배포 페이로드에는 필요 없음.
+# game/ 밖(_assets_source/)으로 옮겨서 game/ 통째 압축 시 안 딸려오게 함
+# (game/assets/audio/에 남아있으면 .gitignore는 git에만 적용되고 zip에는 그대로
+# 포함되므로, itch.io 업로드용 zip은 반드시 game/ 밖에서 소스를 제외해야 함).
+_assets_source/
 # 단, M4 방 4개의 정본 검증 스크린샷은 예외 — 1층(Claude 앱)이 코드 실행 없이
 # 파일만 읽고 육안 리뷰할 수 있어야 하므로 커밋해서 남긴다.
 !tools/render-check/m4-living.png
