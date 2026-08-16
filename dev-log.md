@@ -4,6 +4,26 @@
 
 ---
 
+## 2026-08-16 (20) — gemini/lane-character 리뷰·merge + 검증 스크립트 신규
+
+**리뷰 방식**: 체크아웃 없이 `git show`/`git diff main...origin/gemini/lane-character`로만 리뷰(공유 폴더 체크아웃 사고 방지 — `dev-log.md` (16)(17) 참고). 커밋 1개(`18c2246`), 변경 6개 파일.
+
+**검증(사용자가 이미 확인한 GLB 내용물은 재검증 안 함)**: `createPlayer` 반환 계약 `{root, radius}`가 상위집합(`mixer`/`actions` 추가)으로 유지됨을 확인 — `main.js`가 같은 객체 참조를 `window.__debug.player`로 잡고 있어 GLB 비동기 로드 후 `mixer`가 채워져도 그대로 반영됨(별도 배선 불필요). `restyle()` KEEP 모드가 스키닝 메시에 `material.skinning` 플래그를 안 주는데, r185는 `object.isSkinnedMesh` 기준으로 자동 판정(벤더 소스에서 직접 확인: `skinning:!0===S.isSkinnedMesh`)이라 버그 아님. off-limits(`main.js`/`world/`/`camera/`/`physics/`/`audio/`) 무침범 확인.
+
+**dev-log.md 충돌**: 두 브랜치가 같은 지점((14) 이후)에서 각각 "(15)"를 붙여 갈라짐 — 내용이 서로 달라 번호 중복을 감수하고 둘 다 살림, Lane E merge 때 세운 선례(`(원문, Lane X 작성)` 표기)를 그대로 따름.
+
+**`ATTRIBUTION.md` 오류 수정**: Gemini가 적은 "character-robot.glb 저자: Tom de Smedt"가 틀림. three.js 공식 저장소(`examples/models/gltf/RobotExpressive`) 확인 결과 실제로는 **Tomás Laulhé 제작(CC0 1.0), Don McCurdy가 표정 모프타겟 추가·FBX2GLTF 변환**으로 수정한 것 — 정확한 출처로 교체.
+
+**`tools/render-check/character-check.mjs` 신규**: 헤드리스 Chrome, GLB `mixer` 생성 대기 → 정지 시 `currentAction` 클립명에 'idle' 포함 → W 입력 중 'walk'로 전환 → 캡슐 플레이스홀더가 `root.children`에서 빠졌는지, 4가지 전부 자동 판정. 전부 통과.
+
+**회귀 확인**: `m4-rooms.mjs` 13/13 유지(로봇이 캡슐보다 어깨가 넓지만 충돌 반지름은 `PLAYER.radius` 그대로라 문 통과 영향 없음), `room-tint-check.mjs` 전부 통과(로봇 캐릭터로 바뀐 스크린샷 기준 재확인, Job 1의 색보정 수치 그대로 유효). `tools/check-imports.mjs` 40개 파일 전부 통과.
+
+**관찰(이번 작업 범위 밖, `STATE.md`에 후속 항목으로 기록)**: 로봇이 캡슐보다 시각적으로 크고 둥글어서 스크린샷상 화면을 많이 채움 — 카메라 거리/피치 재튜닝이 필요할 수 있으나 이번 지시 범위에 없어 손대지 않음.
+
+**커밋**: `6e68173`(merge) → `character-check.mjs`/`STATE.md` 커밋으로 이어짐.
+
+---
+
 ## 2026-08-16 (19) — (18)의 수용기준이 잘못 설계됨: 조명 우회로 재발, 재작업
 
 **문제**: (18)에서 "방끼리 채널 최대차 ≥12"를 수용기준으로 세웠는데, 이건 방마다

@@ -2,7 +2,7 @@
 
 > 60줄 유지. 서술 금지, 상태만. 세션 끝에 **Claude Code CLI가 갱신**한다.
 > 배경/경위가 필요하면 `handoff-2026-08-15.md`, 전체 로그는 `dev-log.md`.
-> 최종 갱신: 2026-08-15 (Claude Code CLI)
+> 최종 갱신: 2026-08-16 (Claude Code CLI)
 
 ## 3층 운영규칙
 
@@ -26,9 +26,9 @@
 | M0 기반 | ✅ |
 | M1 이동/충돌/카메라 (휠 줌 포함) | ✅ |
 | M2 룩 (후처리·안개·바깥지형) | ✅ |
-| M3 (a)에셋 파이프라인 ✅ / (b)걷는 캐릭터 | 🟡 `gemini/lane-character` 대기 |
+| M3 (a)에셋 파이프라인 ✅ / (b)걷는 캐릭터 | ✅ `gemini/lane-character` merge 완료(리깅 로봇+idle/walk, `character-check.mjs` 통과) |
 | **M4 집 4칸 구조** (`layout.js`+`house.js`, 거실 소품) | ✅ 완료 — `layout-check.mjs` 7/7, `m4-rooms.mjs` 13/13 통과 |
-| M4c 방 3개 드레싱 | 🟡 `gemini/lane-rooms` 대기 |
+| M4c 방 3개 드레싱 | 🟡 `gemini/lane-rooms`에 새 커밋 있음(`e79a423`) — 아직 리뷰 전 |
 | M5 배포 (itch.io) | 🔴 M4c 완료 후 판단 |
 | M6 증식 (오디오 시스템 ✅ / 실제 에셋·소품) | 🟡 `gemini/lane-audio-content` 대기 |
 | M7 폴리시 | 🔴 |
@@ -37,18 +37,18 @@
 
 | 브랜치 | 담당 | 상태 |
 |---|---|---|
-| `main` | 2층 CLI | M4 구조 완료, 다음 작업 대기 |
-| `gemini/lane-character` | 3층 | 대기, 미착수 — 지시서 있음 |
+| `main` | 2층 CLI | M4 구조 완료 + 색보정/조명 재작업 완료 + 캐릭터 merge 완료 |
+| `gemini/lane-character` | 3층 | merge 완료(`6e68173`) — **삭제 대상** |
 | `gemini/lane-audio-content` | 3층 | 대기, 미착수 — 지시서 있음 |
-| `gemini/lane-rooms` | 3층 | 대기, 미착수 — 지시서 있음 (M4-9 신규) |
+| `gemini/lane-rooms` | 3층 | 새 커밋 있음(`e79a423`) — 다음 리뷰 대상 |
 | `gemini/lane-c-look`, `gemini/lane-e-assets-audio` | — | merge 완료, **삭제 대상** |
 
 ## 지금 열려 있는 작업 (우선순위)
 
-1. **방 3개 드레싱** — 3층, `gemini/lane-rooms`, 지금 바로 착수 가능
-2. **걷는 캐릭터 / BGM·SFX 에셋** — 3층, 지금 바로 병렬 착수 가능 (전부 파일 무충돌)
+1. **`gemini/lane-rooms` 리뷰·merge** — 2층, 새 커밋(`e79a423`) 도착함, 다음 세션 최우선
+2. **BGM·SFX 에셋** — 3층, `gemini/lane-audio-content` 지금 바로 착수 가능
 3. 벽 페이드 (`TAG.FADEABLE` 실제 투명도) — 2층, 문 있는 벽 구조가 이제 있으니 착수 가능
-4. 룩 튜닝 (마젠타 치우침) — 아무 때나 5분
+4. 카메라 프레이밍 재확인 — 로봇 캐릭터가 캡슐보다 크고 둥글어서 화면을 많이 채움(스크린샷 육안 확인, `dev-log.md` (20) 참고). 수치 조정 필요할 수 있음
 5. M5 배포 판단 — 방 3개 드레싱 완료 후
 
 ## 열린 결정 / 미확정
