@@ -4,6 +4,31 @@
 
 ---
 
+## 2026-08-17 (24) — 추가 구조 2건 (B-4a 현관문·마당, B-4b 창문 3개) 및 점프 기능 (B-5) 구현
+
+**스펙 반영 (`docs/spec/M4-layout.md` §9)**:
+- §9.1 B-4a: 현관문 D4 (거실 서벽 X=-3, Z[-0.65, 0.65], 폭 1.3m), 마당 영역 X[-7,-3] Z[-2.5, 2.5] (y=0), 마당 울타리 3면 (높이 1.0m, 두께 0.12m, solid). 지형 감쇠 평탄 반경 11m 유지 및 확장 BBox X[-8.5,8.5] Z[-8.5,8.5] 내 나무 동적 제거.
+- §9.2 B-4b: 창문 3개 (W1 bedA 북벽, W2 study 동벽, W3 bedB 남벽). 하단 y[0, 0.95] solid+fadeable, 상단 y[1.85, 2.30] fadeable(non-solid). 개구부 y(0.95, 1.85) 유리 없음, 좌우 0.06m 장식 기둥.
+- §9.3 B-5: 점프 물리 (jumpSpeed: 6.0, gravity: -20, 최고점 0.9m, 체공 0.6s). 지면 접촉 시에만 발동(이중점프 불가), XZ 원-AABB 충돌은 Y와 독립 유지. Space 키 preventDefault 적용.
+
+**구현 파일**:
+- `game/src/world/layout.js`: D4, YARD, FENCES, WINDOWS (W1~W3) 상수 정의 및 WALLS/DOORS 갱신.
+- `game/src/world/house.js`: 마당 바닥/울타리 3면 메시 생성 및 창문 3개 수직 분할(하단 solid, 상단 non-solid, 장식 기둥) 구현.
+- `game/src/world/exterior.js`: BBox X[-8.5,8.5]·Z[-8.5,8.5] 내부 나무 동적 계산 및 제거 출력.
+- `game/src/config/player.js`: `jumpSpeed: 6.0`, `gravity: -20` 파라미터 추가.
+- `game/src/player/input.js`: Space 키 입력 및 preventDefault, `isJumpPressed()` 내보내기.
+- `game/src/player/controller.js`: SIM phase에서 점프 Y 속도 및 위치 업데이트 구현.
+
+**검증 결과**:
+- `node tools/layout-check.mjs`: 7/7 전원 통과 (OK).
+- `node tools/render-check/jump-check.mjs`: 점프 최고점 0.81~0.88m, 지면 복귀, 이중점프 방지, 벽 관통 불가 3/3 전원 통과 (OK).
+- `node tools/render-check/m4-rooms.mjs`: 방 4개 도달 및 문 가장자리 통과 13/13 전원 통과 (OK).
+- `node tools/render-check/room-tint-check.mjs tools/render-check`: 4개 방 바닥 톤/밝기/클리핑 전원 통과 (OK).
+- `node tools/asset-check.mjs` & `node tools/check-imports.mjs`: 에셋 및 44개 파일 무결성 통과.
+- `node tools/render-check/yard-shot.mjs`: 마당/현관문/울타리가 잘 보이는 스크린샷(`tools/render-check/m4-yard.png`) 캡처 완료.
+
+---
+
 ## 2026-08-16 (23) — 배포 전 정리 3건: findClip 정확일치, BGM 재인코딩, 출처 정리
 
 **1. `findClip` 정확일치 우선 + 폴백**: 기존엔 `includes()` 부분일치만 써서 idle 검색이 클립 배열 0번인 'Attacking_Idle'을 11번 'Idle'보다 먼저 잡았다((22)에서 발견, 3층 소유 파일이라 미수정 상태로 남겨뒀던 것). 정확 일치(`name.toLowerCase() === kw`)를 키워드 전체에 대해 먼저 시도하고, 그래도 없으면 기존 부분일치로 폴백하도록 수정 — `player/character.js`는 3층 소유지만 배포 전 정리 명목으로 이번엔 예외적으로 직접 수정(사용자 명시 지시). `character-check.mjs`의 idle 검사도 `includes` → 정확히 `'idle'`인지로 강화. 재실행 결과 `currentAction="Idle"` 확인.
@@ -134,6 +159,7 @@ R/G·B/G가 재질 원본 비율에 최대한 가깝게 살아남도록.
 **결과**: 전부 통과 — R/G 1.45~1.72(기준 1.8), B/G 0.67~0.81(기준 0.55),
 클리핑 전 방 0.00%(기준 0.5%), 밝기 거실의 98~127%(기준 60%). `m4-rooms.mjs`
 13/13 유지 확인, 스크린샷 4장 재촬영 후 커밋.
+>>>>>>> origin/main
 
 ---
 
