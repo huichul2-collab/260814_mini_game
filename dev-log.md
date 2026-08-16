@@ -4,6 +4,28 @@
 
 ---
 
+## 2026-08-16 (19) — Gemini Lane: 방 3개 드레싱 (침실A · 작업실 · 침실B) 가구 및 소품 배치 완료
+
+**M4 방 3개 가구/소품배치 모듈 작성**:
+- `game/src/world/rooms/bedA.js`: 침실 A (북쪽 방, X[-2.94,1.94] Z[-6.94,-3.06]). 더블 침대 그룹, 협탁+테이블스탠드, 대형 옷장, 침실 러그, 벽 액자 등 5개 가구/소품 배치. 문 D1 남쪽 진입 구역(X[-1.4,0.4] Z[-3.3,-2.8]) 100% 클리어 보장.
+- `game/src/world/rooms/study.js`: 작업실 (동쪽 방, X[3.06,6.94] Z[-1.94,2.94]). 대형 작업 책상+노트북+서적, 사무용 의자, 3단 대형 책장+알록달록 서적, 1인용 소파+티 테이블, 작업실 러그 등 5개 가구/소품 배치. 문 D2 서쪽 진입 구역(X[2.8,3.3] Z[-0.4,1.4]) 100% 클리어 보장.
+- `game/src/world/rooms/bedB.js`: 침실 B (남쪽 방, X[-1.94,1.94] Z[3.06,6.94]). 싱글 침대 그룹, 서랍장/체스트, 침대 협탁+탁상시계, 대형 관엽 화분, 사각형 러그 등 5개 가구/소품 배치. 문 D3 북쪽 진입 구역(X[-0.9,0.9] Z[2.8,3.3]) 100% 클리어 보장.
+
+**배치 규칙 및 제약 준수**:
+- 각 모듈은 `export function createBedA(scene)`, `createStudy(scene)`, `createBedB(scene)` 단일 함수만 export (통합 연결은 통합자가 나중에 수행).
+- `makeMesh` 시그니처(geo, color, parent, pos, extraMat, opts) 필수 5개 인자 순서 및 6번째 `opts` (`{ solid: true }` / 미태그) 100% 보장 (`fadeable` 금지 규칙 준수).
+- 외부 GLB 추가 없이 `BoxGeometry`, `CylinderGeometry`, `IcosahedronGeometry`, `ConeGeometry` 기반 카툰/flatShading 톤 통일.
+- 가구 배치가 벽 중심선 내부 및 벽 두께 오프셋을 준수하며, 벽면 밀착 시 `자기 깊이/2 + 0.05` 이상 이격하여 벽 뚫림 현상 차단.
+
+**검증 및 검사**:
+- `node tools/layout-check.mjs` 7개 조건 전수 통과 (벽 축정렬, 문 폭, 문 포함, 비중첩, 연결성, 스폰 이격, 외곽선 폐합 OK).
+- `game/_scratch/preview_rooms.html` / `preview_rooms.js` 스크래치 페이지 생성 및 `tools/render-check/shot.mjs` 렌더 캡처 검증 완료.
+- `node --check` 및 `node tools/check-imports.mjs` 통과 (40개 파일 무결성 100%).
+- `main.js`, `layout.js`, `house.js`, `livingRoom.js`, `physics/*`, `camera/*`, `player/*`, `audio/*` 등 오프리밋 파일 수정을 일체 하지 않음을 `git diff --stat origin/main...HEAD`로 최종 확인.
+- 격리된 작업 공간 `C:\Users\hcyang\gemini-workspace\lane-rooms` 내에서만 안전하게 작업 수행.
+
+---
+
 ## 2026-08-15 (18) — M4 스크린샷 육안 리뷰 지적 2건 수정: 과다 적색 + 방 구분 안 됨
 
 **리뷰(1층, Claude 앱)**: M4 스크린샷 4장을 보고 두 가지 지적 — (1) 색보정 과다 적색(`GradeGrainVignetteShader.js`의 G게인 0.72가 원인으로 지목), (2) `lighting.js`가 원점 방 1개 기준 그대로라 집이 커진 뒤 침실A가 거실보다 어두워 보임. **lane-rooms를 띄우기 전에 고치라**는 명시적 지시.
