@@ -51,6 +51,12 @@ page.on('response', (r) => { if (r.status() >= 400 && !r.url().endsWith('favicon
 
 await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'load', timeout: 20000 });
 await sleep(800);
+// gate.js가 에셋 로딩 끝나기 전엔 버튼을 disabled로 둔다 — disabled 상태
+// 클릭은 브라우저가 무시하므로 활성화될 때까지 기다린 뒤 누른다.
+await page.waitForFunction(() => {
+  const btn = document.getElementById('audio-start-btn');
+  return btn && !btn.disabled;
+}, { timeout: 15000 }).catch(() => {});
 await page.click('#audio-start-btn').catch(() => {}); // 오버레이 제거(없으면 무시)
 await sleep(500);
 

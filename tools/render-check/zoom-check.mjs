@@ -42,6 +42,12 @@ page.on('pageerror', (e) => logs.push(`[pageerror] ${e.message}`));
 
 await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'load', timeout: 20000 });
 await new Promise((r) => setTimeout(r, 800));
+// gate.js가 에셋 로딩 끝나기 전엔 버튼을 disabled로 둔다 — disabled 상태
+// 클릭은 브라우저가 무시하므로 활성화될 때까지 기다린 뒤 누른다.
+await page.waitForFunction(() => {
+  const btn = document.getElementById('audio-start-btn');
+  return btn && !btn.disabled;
+}, { timeout: 15000 });
 await page.click('#audio-start-btn'); // #loading 오버레이가 캔버스를 덮고 있어 휠을 먼저 가로챈다 — 시작 버튼부터 눌러야 함
 await new Promise((r) => setTimeout(r, 600));
 

@@ -91,12 +91,59 @@ async function sampleFloor(pngPath) {
   }, PATCHES);
 }
 
+// 비네트 모서리/중앙 휘도비 — 중앙 30% 영역 vs 네 모서리 12% 영역(그레이스케일).
+// 960x600 뷰포트 기준: 중앙 30% = 288x180(중앙 정렬), 모서리 12% = 각 115x72.
+const W = 960, H = 600;
+const CENTER_PATCH = { x: Math.round((W - W * 0.3) / 2), y: Math.round((H - H * 0.3) / 2), w: Math.round(W * 0.3), h: Math.round(H * 0.3) };
+const CORNER_W = Math.round(W * 0.12);
+const CORNER_H = Math.round(H * 0.12);
+const CORNER_PATCHES = [
+  { x: 0, y: 0, w: CORNER_W, h: CORNER_H },
+  { x: W - CORNER_W, y: 0, w: CORNER_W, h: CORNER_H },
+  { x: 0, y: H - CORNER_H, w: CORNER_W, h: CORNER_H },
+  { x: W - CORNER_W, y: H - CORNER_H, w: CORNER_W, h: CORNER_H },
+];
+
+async function sampleVignette(pngPath) {
+  const b64 = fs.readFileSync(pngPath).toString('base64');
+  await page.setContent(
+    `<canvas id="c" width="${W}" height="${H}"></canvas><img id="i" src="data:image/png;base64,${b64}">`
+  );
+  await page.waitForSelector('#i');
+  return page.evaluate(({ centerPatch, cornerPatches }) => {
+    return new Promise((resolve) => {
+      const img = document.getElementById('i');
+      const draw = () => {
+        const c = document.getElementById('c');
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        function avgLuma(p) {
+          const data = ctx.getImageData(p.x, p.y, p.w, p.h).data;
+          let sum = 0, n = 0;
+          for (let i = 0; i < data.length; i += 4) {
+            sum += 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+            n++;
+          }
+          return sum / n;
+        }
+        const centerLum = avgLuma(centerPatch);
+        const cornerLum = cornerPatches.reduce((s, p) => s + avgLuma(p), 0) / cornerPatches.length;
+        resolve({ centerLum, cornerLum, ratio: centerLum > 0 ? cornerLum / centerLum : 0 });
+      };
+      if (img.complete) draw(); else img.onload = draw;
+    });
+  }, { centerPatch: CENTER_PATCH, cornerPatches: CORNER_PATCHES });
+}
+
 const samples = {};
+const vignetteSamples = {};
 for (const [id, f] of Object.entries(files)) {
   samples[id] = await sampleFloor(f);
+  vignetteSamples[id] = await sampleVignette(f);
   const { rgb, clipRatio } = samples[id];
+  const { centerLum, cornerLum, ratio } = vignetteSamples[id];
   console.log(
-    `${id.padEnd(6)} RGB(${rgb.map((v) => v.toFixed(1)).join(', ')})  R/G=${(rgb[0] / rgb[1]).toFixed(2)}  B/G=${(rgb[2] / rgb[1]).toFixed(2)}  clip=${(clipRatio * 100).toFixed(2)}%`
+    `${id.padEnd(6)} RGB(${rgb.map((v) => v.toFixed(1)).join(', ')})  R/G=${(rgb[0] / rgb[1]).toFixed(2)}  B/G=${(rgb[2] / rgb[1]).toFixed(2)}  clip=${(clipRatio * 100).toFixed(2)}%  비네트비=${ratio.toFixed(3)}(중앙${centerLum.toFixed(1)}/모서리${cornerLum.toFixed(1)})`
   );
 }
 await browser.close();
@@ -134,6 +181,14 @@ for (const id of ROOM_IDS) {
   const ok = ratio >= 0.6;
   console.log(`${ok ? 'OK  ' : 'FAIL'} 밝기: ${id} = 거실의 ${(ratio * 100).toFixed(1)}%`);
   if (!ok) failures.push(`${id} 밝기 부족(거실의 ${(ratio * 100).toFixed(1)}%)`);
+}
+
+// ---------- (d) 비네트 모서리/중앙 휘도비 0.45~0.55 ----------
+for (const id of ROOM_IDS) {
+  const { ratio } = vignetteSamples[id];
+  const ok = ratio >= 0.45 && ratio <= 0.55;
+  console.log(`${ok ? 'OK  ' : 'FAIL'} 비네트: ${id} 비율=${ratio.toFixed(3)} (0.45~0.55)`);
+  if (!ok) failures.push(`${id} 비네트 비율 범위 밖(${ratio.toFixed(3)})`);
 }
 
 console.log('');

@@ -16,4 +16,8 @@ export const CAM = {
   pullOutLambda: 4, // 벽에서 멀어질 때(복귀) 감쇠 — 당김은 즉시, 복귀는 천천히
   collisionSkin: 0.15,
   dragSensitivity: 0.006,
+  // 드래그 시점 회전 반전 — followCamera.js는 이 부호만 읽고 숫자를 직접
+  // 흩뿌리지 않는다. true가 기본값(둘 다 반전).
+  invertX: true,
+  invertY: true,
 };

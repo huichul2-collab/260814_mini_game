@@ -2,7 +2,7 @@
 
 > 60줄 유지. 서술 금지, 상태만. 세션 끝에 **Claude Code CLI가 갱신**한다.
 > 배경/경위가 필요하면 `handoff-2026-08-15.md`, 전체 로그는 `dev-log.md`.
-> 최종 갱신: 2026-08-17 (Claude Code CLI) — sfx 가짜 음원 교체 + asset-check.mjs 신규
+> 최종 갱신: 2026-08-17 (Claude Code CLI) — 배포 전 점검 9건 완료(cubone 제거/램프 공중부양/카메라 반전/비네트 완화/게이트-로딩 연동/모바일 안내/deploy.md 등)
 
 ## 3층 운영규칙
 
@@ -30,7 +30,7 @@
 | M3 (a)에셋 파이프라인 ✅ / (b)걷는 캐릭터 | ✅ `gemini/lane-character` merge 완료(리깅 로봇+idle/walk, `character-check.mjs` 통과) |
 | **M4 집 4칸 구조** (`layout.js`+`house.js`, 거실 소품) | ✅ 완료 — `layout-check.mjs` 7/7, `m4-rooms.mjs` 13/13 통과 |
 | M4c 방 3개 드레싱 | ✅ 완료 — `gemini/lane-rooms`가 origin/main 안 받아와 merge 대신 소품 파일 3개만 `git checkout`으로 가져옴(`dev-log.md` (22)) |
-| M5 배포 (itch.io) | 🟡 **판단 가능한 상태** — 구조/이동/캐릭터/오디오/방4개 전부 ✅, 사용자 최종 판단만 남음 |
+| M5 배포 (itch.io) | 🟡 **배포 도구까지 준비됨** — `docs/deploy.md`+`tools/make-dist.mjs`(zip 자동 생성, index.html 루트 보장), 사용자 최종 판단만 남음 |
 | M6 증식 (오디오 시스템 ✅ 실제 에셋까지 완료 / 소품) | 🟡 `gemini/lane-audio-content` merge 완료, 소품 추가는 대기 |
 | M7 폴리시 | 🔴 |
 
@@ -45,10 +45,12 @@
 
 ## 지금 열려 있는 작업 (우선순위)
 
-1. **M5 배포 판단** — 사용자 몫, 기술적으로는 준비됨
+1. **M5 배포 판단** — 사용자 몫, 도구까지 준비됨(`docs/deploy.md`)
 2. 벽 페이드 (`TAG.FADEABLE` 실제 투명도) — 2층, 문 있는 벽 구조가 이제 있으니 착수 가능
 3. 죽은 브랜치(`gemini/lane-character`, `gemini/lane-audio-content`) origin 삭제 — merge 완료됐으니 아무 때나
 4. 카메라: `maxDistance` 8.0 이상 휠 줌아웃 시 일부 방(문 근처)에서 카메라가 문 개구부를 넘어가는 아티팩트 있음(`config/camera.js` 주석 참고) — pitch 튜닝 필요, 지금은 기본 시야만 조정함
+5. 모바일: 터치 감지 시 "PC 권장" 안내만 있음(`audio/gate.js`) — 가상 조이스틱은 스트레치 목표라 미구현
+6. 키 고정 버그 리포트 — `tools/render-check/input-check.mjs`(조합 10가지)로 재현 실패, 방어책(capture:true/visibilitychange/Escape)만 추가함(`player/input.js`). 재발 시 그 조작 순서를 스크립트에 추가해서 다시 잡을 것
 
 ## 열린 결정 / 미확정
 
@@ -56,5 +58,3 @@
 - 콜라이더 실측 24개(스펙 추정 ~43보다 적음 — 상인방 9개가 의도대로 non-solid라 그렇다, 문제 아님)
 - 현관문(집 밖 출입) 만들지 여부 — M5 이후 판단
 - 안개 far, 카메라 기본 거리 — 6m 방 기준 재확인 아직 안 함
-- **`cubone.glb` 라이선스/IP 재검토 필요** — CC0 아니라 **CC-BY 4.0**(Tipatat Chennavasin, poly.pizza/m/cc7gCdKaQYU), `ATTRIBUTION.md`에 뒤늦게 기재(2026-08-17). "Cubone"은 닌텐도 포켓몬 캐릭터명이라 메시 라이선스와 별개로 상표 문제 가능 — 공개 배포 전 사용자가 교체 여부 판단할 것
-- `sfx-footstep.mp3`/`sfx-click.mp3`가 CC0로 허위 기재된 Gemini 합성 가짜였음 → Kenney CC0(`footstep00.ogg`/`switch1.ogg`)로 교체(2026-08-17). 재발 방지로 `tools/asset-check.mjs` 신규(스펙트럼 평탄도로 합성음 의심 경고, exit 0 — 경고만, 최종판단은 사람)

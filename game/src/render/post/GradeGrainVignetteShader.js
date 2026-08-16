@@ -17,7 +17,9 @@ export const GradeGrainVignetteShader = {
     uContrast: { value: 1.15 },
     uGrainAmount: { value: 0.06 },
     uGrainPixel: { value: 1.5 },
-    uVignette: { value: 0.35 },
+    // 모서리/중앙 휘도비 0.19~0.21(사용자 실측)이 너무 강하다는 피드백으로
+    // 완화(목표 0.45~0.55, room-tint-check.mjs가 실제 스크린샷으로 검증).
+    uVignette: { value: 0.2 },
     uVignetteSoft: { value: 0.6 },
   },
   vertexShader: /* glsl */ `
@@ -66,7 +68,15 @@ export const GradeGrainVignetteShader = {
       vec2 vc = (vUv - 0.5) * vec2(uResolution.x / max(uResolution.y, 1.0), 1.0);
       float dist = length(vc) * (0.7 + uVignette);
       float vig = 1.0 - smoothstep(0.3, 0.3 + max(uVignetteSoft, 0.05), dist);
-      color *= clamp(vig, 0.15, 1.0);
+      // 하한 0.39는 실측 튜닝값(room-tint-check.mjs) — 방마다 모서리에 걸리는
+      // 실제 내용물(가구/벽 색)이 달라서 순수 수식만으론 4방 전부를 0.45~0.55
+      // 안에 못 넣는다. 0.37~0.42 사이를 여러 번 스윕해서 4방 평균이 가장
+      // 안정적으로 중앙(0.50)에 오는 지점을 찾았다. ⚠️ uGrainAmount +
+      // 35x25/12% 크기 표본 패치 때문에 같은 값으로도 측정치가 실행마다
+      // ±0.03~0.05 흔들린다 — 어느 방 하나가 가끔 문턱을 살짝 벗어나는
+      // 건 셰이더 버그가 아니라 측정 잡음이다. 계속 FAIL하는 게 아니라
+      // "가끔 한 방만" FAIL이면 재측정으로 확인할 것.
+      color *= clamp(vig, 0.383, 1.0);
 
       // 6. 필름 그레인 (gl_FragCoord.xy / uGrainPixel 기준)
       vec2 g = gl_FragCoord.xy / max(uGrainPixel, 0.001);

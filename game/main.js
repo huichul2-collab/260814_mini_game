@@ -14,12 +14,10 @@ import { createPlayer } from './src/player/character.js';
 import { initController } from './src/player/controller.js';
 import { createFollowCamera } from './src/camera/followCamera.js';
 import { createComposer } from './src/render/post/composer.js';
-import { loadGLTF } from './src/assets/loaders.js';
-import { restyle, Restyle, logMaterials } from './src/assets/restyle.js';
-import { fitHeight } from './src/assets/normalize.js';
 import { initAudioGate } from './src/audio/gate.js';
 import { playBGM } from './src/audio/audio.js';
 import { initFootsteps } from './src/audio/footsteps.js';
+import { loadAudioBuffer } from './src/assets/loaders.js';
 
 /* ------------------------------------------------------------------ *
  *  부트스트랩 전용 파일 (로드맵 §3 "main.js는 통합자 전용").
@@ -38,24 +36,10 @@ setupFog(scene);
 setupLighting(scene);
 createHouse(scene); // M4: layout.js 기반 바닥·벽·문
 const livingRoom = createLivingRoom(scene, camera, renderer);
-createBedA(scene);
-createStudy(scene);
-createBedB(scene);
+const bedA = createBedA(scene);
+const study = createStudy(scene);
+const bedB = createBedB(scene);
 createExterior(scene); // 안개가 걸릴 원경 지형 — 이게 없으면 fog가 눈에 안 보인다
-
-// ---------- M3 텍스처 실습: 책상 위 소품으로 GLB 하나 얹어보기 ----------
-// cubone.glb는 애니메이션·스킨 없는 정적 메시라 걷는 캐릭터로는 못 쓰지만
-// (사전검사 결과, dev-log 참고), restyle 파이프라인 검증용 소품으로는 충분하다.
-loadGLTF('./assets/glb/cubone.glb')
-  .then((gltf) => {
-    const model = gltf.scene;
-    fitHeight(model, 0.22); // 책상 위에 올려둘 작은 피규어 크기
-    restyle(model, { mode: Restyle.KEEP }); // 원본 재질 유지 + Lambert로 강등
-    logMaterials(model); // 콘솔에서 재질 구성 확인 가능
-    model.position.set(0.3, 0.75, -0.05); // 책상 위, 머그컵 반대쪽
-    livingRoom.desk.add(model);
-  })
-  .catch((err) => console.warn('[cubone] 로드 실패:', err));
 
 const player = createPlayer(scene, [0, 0, 1.5]); // 거실, D3 문 앞 여유 1.5m (docs/spec/M4-layout.md §5.3)
 rebuildFrom(scene); // 플레이어는 solid 태그가 없으니 자기 자신과는 안 부딪힘
@@ -63,20 +47,42 @@ rebuildFrom(scene); // 플레이어는 solid 태그가 없으니 자기 자신�
 const followCam = createFollowCamera(camera, renderer.domElement, player.root.position, scene);
 initController(player, followCam.getYaw);
 
-// 디버그 훅 — 헤드리스 검증 스크립트가 위치/카메라 상태를 직접 읽는 용도.
-// 프로덕션 동작에는 관여하지 않는다.
-window.__debug = { player, camera, getColliders };
+// 디버그 훅 — 헤드리스 검증 스크립트가 위치/카메라/씬 상태를 직접 읽는 용도.
+// 프로덕션 동작에는 관여하지 않는다. scene/THREE/rooms는 tools/render-check/
+// prop-bounds-check.mjs가 방별 소품 월드 좌표를 계산할 때 쓴다.
+window.__debug = {
+  player,
+  camera,
+  getColliders,
+  scene,
+  THREE,
+  rooms: { living: livingRoom.room, bedA: bedA.room, study: study.room, bedB: bedB.room },
+};
 
 // ---------- 오디오 게이트 (브라우저 오토플레이 정책상 사용자 제스처 필요) ----------
 // #loading 오버레이를 "시작하기" 버튼으로 바꾼다(index.html은 안 건드림, gate.js가 DOM 주입).
 // 클릭 시에만 AudioContext.resume() + BGM 재생이 허용된다.
+//
+// 오디오 데이터 자체는 미리 받아둔다 — 로딩(=네트워크 다운로드)과 재생은
+// 별개고, 브라우저 오토플레이 정책이 막는 건 "제스처 없는 재생"뿐이다.
+// 게이트가 실제 로딩 완료를 반영하려면(gate.js가 공용 LoadingManager를
+// 구독) 여기서 먼저 요청을 걸어둬야 한다 — 안 그러면 manager가 이 두
+// 파일의 존재를 아예 모른 채로 "다 받았다"고 오판한다. 클릭 이후
+// playBGM/initFootsteps가 같은 URL을 다시 로드하지만 브라우저 HTTP
+// 캐시 덕분에 사실상 즉시 끝난다.
+loadAudioBuffer('./assets/audio/bgm-main.mp3').catch(() => {});
+loadAudioBuffer('./assets/audio/sfx-footstep.mp3').catch(() => {});
+
 initAudioGate(loadingEl, () => {
   const bgm = playBGM('./assets/audio/bgm-main.mp3', { volume: 0.4, loop: true });
   window.__debug.bgm = bgm;
   window.__debug.footsteps = initFootsteps('./assets/audio/sfx-footstep.mp3', 0.38);
+
+  // 조작법 힌트도 게이트 콜백 안으로 옮겼다 — 예전엔 페이지 로드 시점에
+  // 6초 타이머가 시작해서, 시작 버튼을 늦게 누르면 힌트를 아예 못 봤다.
+  hintEl.classList.remove('hidden');
+  setTimeout(() => hintEl.classList.add('hidden'), 6000);
 });
-hintEl.classList.remove('hidden');
-setTimeout(() => hintEl.classList.add('hidden'), 6000);
 
 // ---------- 후처리 (그레인+색보정+비네트) ----------
 const post = createComposer(renderer, scene, camera);

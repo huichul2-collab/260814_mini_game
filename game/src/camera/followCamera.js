@@ -38,13 +38,18 @@ export function createFollowCamera(camera, domElement, target, scene) {
     lastY = e.clientY;
     moved = 0;
   });
+  // 기준(반전 없음) 부호: 오른쪽으로 드래그(dx>0)하면 yaw 감소, 아래로
+  // 드래그(dy>0)하면 pitch 감소. CAM.invertX/invertY(기본 true)가 이 부호를
+  // 뒤집는다 — 숫자를 여기 흩뿌리지 않고 config/camera.js 한 곳에서만 조정.
+  const signX = CAM.invertX ? 1 : -1;
+  const signY = CAM.invertY ? 1 : -1;
   window.addEventListener('pointermove', (e) => {
     if (!dragging) return;
     const dx = e.clientX - lastX;
     const dy = e.clientY - lastY;
     moved += Math.abs(dx) + Math.abs(dy);
-    state.yaw -= dx * CAM.dragSensitivity;
-    state.pitch = clamp(state.pitch - dy * CAM.dragSensitivity, CAM.minPitch, CAM.maxPitch);
+    state.yaw += signX * dx * CAM.dragSensitivity;
+    state.pitch = clamp(state.pitch + signY * dy * CAM.dragSensitivity, CAM.minPitch, CAM.maxPitch);
     lastX = e.clientX;
     lastY = e.clientY;
   });

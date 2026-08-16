@@ -97,8 +97,13 @@ export function createLivingRoom(scene, camera, renderer) {
   makeMesh(new THREE.CylinderGeometry(0.22, 0.24, 0.08, 16), 0x5a8fd1, room, [0.9, 0.04, 1.5]);
 
   // ---------- 상호작용 오브젝트: 스탠드 조명 ----------
+  // ⚠️ desk.add(lamp)라서 lamp.position은 desk 로컬 좌표다. M4에서 책상을
+  // (0.4,0,-1.35)→(0.4,0,-2.55)로 옮길 때 이 좌표를 안 고쳐서 desk 오프셋이
+  // 두 번(데스크+램프) 더해져 램프가 거실 북벽(Z=-3)을 뚫고 침실A 쪽 허공에
+  // 떠 있던 회귀가 있었다. 책상 상판 윗면은 로컬 y=0.75(상판 중심 0.72 +
+  // 두께 0.06의 절반) — 램프는 상판 위 오른쪽(x=0.35, 상판 절반폭 0.5 안쪽)에 앉는다.
   const lamp = new THREE.Group();
-  lamp.position.set(0.75, 0.75, -1.35);
+  lamp.position.set(0.35, 0.75, 0);
   desk.add(lamp);
 
   makeMesh(new THREE.CylinderGeometry(0.06, 0.07, 0.02, 12), 0x2e2a3a, lamp, [0, 0.01, 0]);

@@ -62,6 +62,12 @@ if (!before.hasButton) failures.push('#audio-start-btn 없음');
 // ⚠️ 고정 sleep이 아니라 폴링으로 대기한다 — BGM 파일 용량이 세션마다
 // 바뀔 수 있어(실제로 1.17MB↔4.1MB를 오간 적 있음) 고정 시간은 깨지기 쉽다.
 console.log('--- BGM 게이트 ---');
+// gate.js가 에셋 로딩이 끝나기 전엔 버튼을 disabled로 둔다(2026-08-17) —
+// disabled 상태에서 클릭하면 브라우저가 click을 아예 안 쏴서 무한 대기한다.
+await page.waitForFunction(() => {
+  const btn = document.getElementById('audio-start-btn');
+  return btn && !btn.disabled;
+}, { timeout: 15000 });
 await page.click('#audio-start-btn');
 
 let after = null;
