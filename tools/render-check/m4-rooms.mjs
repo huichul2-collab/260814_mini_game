@@ -112,6 +112,41 @@ async function walkTo(target, { tol = 0.3, timeoutMs = 20000, pollMs = 150 } = {
 }
 
 let failures = 0;
+async function waitForCameraToSettle({ maxWaitMs = 5000, distThreshold = 0.0005, consecutiveRequired = 5 } = {}) {
+  return page.evaluate(async ({ maxWaitMs, distThreshold, consecutiveRequired }) => {
+    const cam = window.__debug.camera;
+    const prevPos = new window.__debug.THREE.Vector3();
+    let consecutiveCount = 0;
+    const startTime = performance.now();
+
+    while (performance.now() - startTime < maxWaitMs) {
+      await new Promise((r) => requestAnimationFrame(r));
+      const dist = cam.position.distanceTo(prevPos);
+      prevPos.copy(cam.position);
+      if (dist < distThreshold) {
+        consecutiveCount++;
+        if (consecutiveCount >= consecutiveRequired) {
+          break;
+        }
+      } else {
+        consecutiveCount = 0;
+      }
+    }
+
+    // 그레인 셰이더 uTime 고정 (결정론적 촬영 노이즈 제거)
+    if (window.__debug.post && window.__debug.post.gradePass && window.__debug.post.gradePass.uniforms && window.__debug.post.gradePass.uniforms.uTime) {
+      window.__debug.post.gradePass.uniforms.uTime.value = 0.0;
+    }
+
+    return {
+      pos: { x: cam.position.x, y: cam.position.y, z: cam.position.z },
+      rot: { x: cam.rotation.x, y: cam.rotation.y, z: cam.rotation.z },
+      settled: consecutiveCount >= consecutiveRequired,
+      elapsedMs: Math.round(performance.now() - startTime),
+    };
+  }, { maxWaitMs, distThreshold, consecutiveRequired });
+}
+
 // via: 문D1 옆(책상 북쪽 벽밀착 구석)은 목표(0,0)로 바로 직선 이동하면
 // 대각선 입력이 책상 모서리+벽 사이 코너에 걸려 멈춘다(정상적인 코너
 // 막힘 — 입력을 반대로 바꾸면 실제로 빠져나오는 것도 확인됨, docs/STATE.md
@@ -135,7 +170,12 @@ async function leg(name, target, { shotPath = null, via = [] } = {}) {
   const ms = r ? r.ms : 0;
   console.log(`${tag} ${name} → 목표(${target.x},${target.z}) 실제(${px},${pz}) ${ms}ms`);
   if (shotPath) {
-    await sleep(800);
+    const camInfo = await waitForCameraToSettle();
+    console.log(
+      `[m4-rooms] ${name} 카메라 안착(${camInfo.elapsedMs}ms, settled:${camInfo.settled}) — ` +
+      `pos(${camInfo.pos.x.toFixed(3)}, ${camInfo.pos.y.toFixed(3)}, ${camInfo.pos.z.toFixed(3)}) ` +
+      `rot(${camInfo.rot.x.toFixed(3)}, ${camInfo.rot.y.toFixed(3)}, ${camInfo.rot.z.toFixed(3)})`
+    );
     await page.screenshot({ path: shotPath });
   }
   return r;
