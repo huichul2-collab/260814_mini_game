@@ -573,14 +573,24 @@ Gemini 작업 재개 후 `main`에서 M1 나머지를 끝까지 진행. 매 파�
 
 **결과**: 전부 연결 실패(exit 28, timeout). 이 세션(백그라운드 job)이 사용자 로컬 머신과 네트워크가 분리된 별도 샌드박스로 판단됨 — 파일 경로가 `C:\Users\hcyang\...`로 로컬처럼 보여도 실제로는 격리된 환경. **결론: 비주얼 검증은 이 세션에서 불가능, 사용자가 브라우저에서 직접 확인해야 함.** (이전 세션의 headless 렌더 실패와 같은 근본 원인으로 추정 — 네트워크/환경 격리)
 
+
 ---
 
-## 2026-08-15 (1) — Three.js MVP 착수 + 멀티 에이전트 워크플로우 논의
+## 2026-08-17 — M8 사고 기록 및 자동검증 보강
 
-`handoff-2026-08-15.md` 최초 작성 세션. 요약:
-- Three.js로 게임 MVP 착수 결정(Unity/Godot 대신 — Cowork 세션이 GUI 조작 불가하기 때문)
-- `game/` 폴더 구현: 바닥1+벽3+책상·의자·러그+스탠드 상호작용1, 카툰 셰이딩+아웃라인, 노을 스카이돔
-- 비주얼 검증 못함(샌드박스 네트워크 allowlist로 playwright/headless-gl 설치 불가)
-- Claude(Opus/Sonnet)+Gemini(Antigravity) 동시 운용 방안 논의 → git 파일 릴레이가 현실적 대안이라는 결론
+**사고 원인 분석**:
+- `game/config.js` 평탄화 과정에서 `CAMERA_CONFIG`에 `initialYaw: 0` 키 누락.
+- `followCamera.js`에서 `CAM.initialYaw` (15개 키 참조 중 1개 누락) -> `undefined` -> 이후 수평/수직 회전 좌표 연산 전체가 `NaN`으로 전파.
+- 카메라 위치가 `NaN`이 되면서 WebGL 렌더러가 아무것도 그리지 못하는 검은 화면(Black Screen) 버그 발생.
+- **기존 `room-tint-check.mjs` 검사 허점**: R/G, B/G, 휘도비, 클리핑 % 등 모든 검사 지표가 비율(Ratio) 기반이었기 때문에, 검은 화면에서 R=0, G=0, B=0으로 분자·분모가 같이 0이 되면서 검은 화면임에도 불구하고 4/4 항목을 전부 OK 통과시키는 치명적 허점이 존재했다.
 
-상세 내용은 `handoff-2026-08-15.md` 참고.
+**보강 및 대책**:
+1. **`CAMERA_CONFIG` 노브 복구**: `initialYaw: 0` 추가.
+2. **`tools/config-check.mjs` 신규 구현**: `src/` 및 `main.js` 전체에서 `CAM.xxx`, `PLAYER.xxx`, `PLAYER_CONFIG.xxx` 등 정규식으로 config 참조 키를 추출하고, `game/config.js`에 실제 존재하는지 빌드 타임 사전 검사. 누락 시 exit 1로 빌드 차단. (최초 실행 시 32개 참조 키 100% 존재 확인)
+3. **`room-tint-check.mjs` 절대 하한 검사 추가**: 비율 검사보다 **앞선 0번 단계**에 절대 하한 검사 배치:
+   - (a) 이미지 전체 평균 휘도 >= 15
+   - (b) 거의 검정(max 채널 < 20) 픽셀 비율 < 50%
+   - (c) 이미지 최대 픽셀값 >= 200
+   - 하나라도 위반 시 즉시 `FAIL 절대하한: 렌더 실패 (검은 화면)` 출력 후 exit 1.
+4. **스크린샷 5장 재생성 및 검증**: `m4-living`, `m4-bedA`, `m4-study`, `m4-bedB`, `m4-yard` 5장 모두 ~760KB 정상 렌더링 확인 및 절대 하한 검사 + 비율 검사 전수 통과.
+

@@ -55,6 +55,9 @@ export const CAMERA_CONFIG = {
   /** 수직 드래그 피치 회전 방향 반전 여부. (기본: true) */
   invertY: true,
 
+  /** 시작 시 카메라 수평 회전각 (rad). yaw=0이면 카메라가 target의 +Z 쪽, 전진(W)은 -Z 방향. 권장: 0 */
+  initialYaw: 0,
+
   /** 초기 수평선 대비 카메라 피치 각도 (rad). 권장 범위: 0.5 ~ 1.0 (기본: 0.75) */
   initialPitch: 0.75,
 

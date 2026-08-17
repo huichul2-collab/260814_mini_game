@@ -147,6 +147,84 @@ async function sampleVignette(pngPath) {
   }, { centerPatch: CENTER_PATCH, cornerPatches: CORNER_PATCHES });
 }
 
+async function sampleAbsoluteFloor(pngPath) {
+  const b64 = fs.readFileSync(pngPath).toString('base64');
+  await page.setContent(
+    `<canvas id="c" width="${W}" height="${H}"></canvas><img id="i" src="data:image/png;base64,${b64}">`
+  );
+  await page.waitForSelector('#i');
+  return page.evaluate(({ w, h }) => {
+    return new Promise((resolve) => {
+      const img = document.getElementById('i');
+      const draw = () => {
+        const c = document.getElementById('c');
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const data = ctx.getImageData(0, 0, w, h).data;
+        let sumLuma = 0;
+        let nearBlackCount = 0;
+        let maxPixel = 0;
+        const total = data.length / 4;
+
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+          sumLuma += luma;
+          const maxChan = Math.max(r, g, b);
+          if (maxChan < 20) nearBlackCount++;
+          if (maxChan > maxPixel) maxPixel = maxChan;
+        }
+
+        resolve({
+          avgLuma: sumLuma / total,
+          nearBlackRatio: nearBlackCount / total,
+          maxPixel,
+        });
+      };
+      if (img.decode) {
+        img.decode().then(draw).catch(draw);
+      } else if (img.complete) {
+        draw();
+      } else {
+        img.onload = draw;
+      }
+    });
+  }, { w: W, h: H });
+}
+
+// ---------- 0. 절대 하한 검사 (검은 화면 렌더 실패 즉시 차단) ----------
+console.log('--- 0. 이미지 절대 하한 검사 ---');
+let absoluteFailures = 0;
+for (const [id, f] of Object.entries(files)) {
+  const abs = await sampleAbsoluteFloor(f);
+  const lumaOk = abs.avgLuma >= 15;
+  const blackOk = abs.nearBlackRatio < 0.50;
+  const maxOk = abs.maxPixel >= 200;
+  const pass = lumaOk && blackOk && maxOk;
+
+  if (pass) {
+    console.log(
+      `OK   절대하한: ${id.padEnd(6)} 평균휘도=${abs.avgLuma.toFixed(1)} (>=15) ` +
+      `검정비율=${(abs.nearBlackRatio * 100).toFixed(1)}% (<50%) 최대픽셀=${abs.maxPixel} (>=200)`
+    );
+  } else {
+    console.error(
+      `FAIL 절대하한: ${id.padEnd(6)} 렌더 실패 (검은 화면) — ` +
+      `평균휘도 ${abs.avgLuma.toFixed(1)} (>=15), 검정비율 ${(abs.nearBlackRatio * 100).toFixed(1)}% (<50%), 최대픽셀 ${abs.maxPixel} (>=200)`
+    );
+    absoluteFailures++;
+  }
+}
+
+if (absoluteFailures > 0) {
+  console.error(`\nFAIL: 총 ${absoluteFailures}개 방에서 검은 화면 렌더 실패 감지 — 비율 검사를 건너뛰고 종료합니다.`);
+  await browser.close();
+  process.exit(1);
+}
+
+console.log('\n--- 방별 비율 및 톤 검사 ---');
 const samples = {};
 const vignetteSamples = {};
 for (const [id, f] of Object.entries(files)) {
