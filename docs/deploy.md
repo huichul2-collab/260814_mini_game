@@ -13,7 +13,11 @@ node tools/render-check/audio-check.mjs game
 node tools/render-check/room-tint-check.mjs tools/render-check
 node tools/render-check/prop-bounds-check.mjs game
 node tools/render-check/input-check.mjs game
+node tools/render-check/interaction-check.mjs game tools/render-check
+node tools/render-check/stuck-diagnose.mjs game
 ```
+
+⚠️ **알려진 예외**: `m4-rooms.mjs`(8/13)와 `stuck-diagnose.mjs`(exit 1)는 현재 통과하지 못한다 — 거실 문D1 코너(책상+벽 잔여조각)에서 대각선 이동이 막히는 알려진 이동 정지 버그 때문이다(`docs/STATE.md` 열린 작업 1번). `physics/resolve.js`는 이미 MTV 정석 방식으로 재구조화했지만 이 특정 케이스는 두 콜라이더가 독립적으로 막고 있어 알고리즘을 바꿔도 안 풀린다는 게 실측으로 확인됐다. 배포 전에는 이 두 스크립트의 "새로운" 실패가 없는지(즉 8/13·같은 좌표 그대로인지)만 확인하면 된다.
 
 ## 1. zip 만들기 — 반드시 스크립트로
 
