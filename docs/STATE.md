@@ -2,7 +2,7 @@
 
 > 60줄 유지. 서술 금지, 상태만. 세션 끝에 **Claude Code CLI / Antigravity가 갱신**한다.
 > 배경/경위가 필요하면 `handoff-2026-08-15.md`, 전체 로그는 `dev-log.md`.
-> 최종 갱신: 2026-08-18 — `gemini/lane-furniture`(데이터 기반 가구 리팩터링) merge 완료, 씬그래프 diff로 검증(`scene-dump.mjs`). exterior.js 나무 시드 고정(`WORLD_SEED`)
+> 최종 갱신: 2026-08-18 — 데이터 기반 가구 리팩터링 merge(씬그래프 diff로 검증, `scene-dump.mjs`), exterior.js 나무 시드 고정(`WORLD_SEED`). 레인 브랜치 전부 merge 완료 후 origin에서 삭제 — 현재 원격은 `main`뿐
 
 ## 3층 운영규칙
 
@@ -31,11 +31,11 @@
 | M0 기반 | ✅ |
 | M1 이동/충돌/카메라 (휠 줌 포함) | ✅ |
 | M2 룩 (후처리·안개·바깥지형) | ✅ |
-| M3 (a)에셋 파이프라인 ✅ / (b)걷는 캐릭터 | ✅ `gemini/lane-character` merge 완료 |
+| M3 (a)에셋 파이프라인 ✅ / (b)걷는 캐릭터 | ✅ |
 | **M4 집 4칸 구조** (`layout.js`+`house.js`, 거실 소품) | ✅ 완료 — `layout-check.mjs` 7/7, `m4-rooms.mjs` 13/13 통과 |
-| M4c / M4-ext 방 3개 드레싱 + B-4a/b, B-5 | ✅ 완료 — `gemini/lane-rooms` merge 완료 (D4 현관문·마당, 창문 3개, Space 점프 물리) |
+| M4c / M4-ext 방 3개 드레싱 + B-4a/b, B-5 | ✅ 완료 (D4 현관문·마당, 창문 3개, Space 점프 물리) |
 | M5 배포 (itch.io) | 🟡 **배포 도구까지 준비됨** — `docs/deploy.md`+`tools/make-dist.mjs` |
-| M6 증식 (오디오 시스템 ✅ 실제 에셋까지 완료 / 소품) | 🟡 `gemini/lane-audio-content` merge 완료 |
+| M6 증식 (오디오 시스템 ✅ 실제 에셋까지 완료 / 소품) | 🟡 |
 | M9-A 방탈출 기반(사물 클릭→설명, `story.js`+`probe.js`+`dialogue.js`) | ✅ 완료 — `interaction-check.mjs` 6/6 통과 |
 | M9-B 문잠금 패널 + 퍼즐 1개(P1, 시계→0825→서재) | 🔴 다음 작업 — `docs/spec/M9-escape.md` §8 |
 | M9-C 나머지 퍼즐(P2~P5)+아이템+엔딩 | 🔴 |
