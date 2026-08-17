@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { POST_EFFECTS_CONFIG } from '../../../config.js';
 
 export const GradeGrainVignetteShader = {
   name: 'GradeGrainVignetteShader',
@@ -6,21 +7,14 @@ export const GradeGrainVignetteShader = {
     tDiffuse: { value: null },
     uTime: { value: 0 },
     uResolution: { value: new THREE.Vector2(1, 1) },
-    // ⚠️ 이전 값(1.15,0.92,0.88)도 여전히 과다 적색이었다 — 실측(사용자가
-    // 스크린샷 픽셀을 직접 잼): 바닥 R/G 2.39~2.65인데 재질 원본 R/G는
-    // 1.44~1.53. 즉 이 gain이 원본 대비 R/G를 60~70%나 더 붉게 왜곡시킴.
-    // R/G 게인비를 1.25(1.15/0.92)에서 더 낮춰 원본색이 화면에 최대한
-    // 그대로 살아남게 한다. 목표: 바닥 R/G <= 1.8, 따뜻한 톤은 유지.
-    uGain: { value: new THREE.Vector3(0.92, 1.0, 1.25) },
-    uLift: { value: new THREE.Vector3(0.02, 0.03, 0.08) },
-    uSaturation: { value: 1.1 },
-    uContrast: { value: 1.15 },
-    uGrainAmount: { value: 0.06 },
-    uGrainPixel: { value: 1.5 },
-    // 모서리/중앙 휘도비 0.19~0.21(사용자 실측)이 너무 강하다는 피드백으로
-    // 완화(목표 0.45~0.55, room-tint-check.mjs가 실제 스크린샷으로 검증).
-    uVignette: { value: 0.2 },
-    uVignetteSoft: { value: 0.6 },
+    uGain: { value: new THREE.Vector3(...POST_EFFECTS_CONFIG.gain) },
+    uLift: { value: new THREE.Vector3(...POST_EFFECTS_CONFIG.lift) },
+    uSaturation: { value: POST_EFFECTS_CONFIG.saturation },
+    uContrast: { value: POST_EFFECTS_CONFIG.contrast },
+    uGrainAmount: { value: POST_EFFECTS_CONFIG.grainAmount },
+    uGrainPixel: { value: POST_EFFECTS_CONFIG.grainPixel },
+    uVignette: { value: POST_EFFECTS_CONFIG.vignette },
+    uVignetteSoft: { value: POST_EFFECTS_CONFIG.vignetteSoft },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;

@@ -154,6 +154,13 @@ await run('드래그 중 W+A 다운, 드래그 종료 후 W+A 업', [
 ]);
 
 console.log('');
+console.log('--- ③ 컨텍스트 메뉴(우클릭) 발생 시 키 리셋 ---');
+await run('W다운 중 contextmenu 이벤트 발생', [
+  () => keyDown('KeyW'),
+  () => page.evaluate(() => window.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))),
+]);
+
+console.log('');
 console.log('로그:', logs.length ? logs : '없음');
 console.log('');
 

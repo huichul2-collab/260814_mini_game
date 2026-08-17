@@ -85,7 +85,7 @@ export function createLivingRoom(scene, camera, renderer) {
 
   // ---------- 아이템 증식: 벽 액자 (뒷벽 안쪽면에 밀착) ----------
   const frame = new THREE.Group();
-  frame.position.set(-0.9, 1.55, -2.88);
+  frame.position.set(1.0, 1.55, -2.88);
   room.add(frame);
   makeMesh(new THREE.BoxGeometry(0.5, 0.38, 0.03), 0x5a3826, frame, [0, 0, 0]);
   makeMesh(new THREE.BoxGeometry(0.4, 0.28, 0.01), 0x9db8ff, frame, [0, 0, 0.02]);

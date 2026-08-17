@@ -84,8 +84,8 @@ initAudioGate(loadingEl, () => {
   setTimeout(() => hintEl.classList.add('hidden'), 6000);
 });
 
-// ---------- 후처리 (그레인+색보정+비네트) ----------
 const post = createComposer(renderer, scene, camera);
+window.__debug.post = post;
 window.addEventListener('resize', () => {
   post.resize(window.innerWidth, window.innerHeight);
 });

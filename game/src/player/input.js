@@ -30,6 +30,10 @@ window.addEventListener('blur', () => keys.clear()); // 탭 전환 중 키가 �
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) keys.clear();
 });
+window.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  keys.clear();
+});
 window.addEventListener(
   'keydown',
   (e) => {

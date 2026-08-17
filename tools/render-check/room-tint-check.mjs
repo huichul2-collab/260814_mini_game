@@ -86,7 +86,13 @@ async function sampleFloor(pngPath) {
         }
         resolve({ rgb: [r / n, g / n, b / n], clipRatio: clipped / n });
       };
-      if (img.complete) draw(); else img.onload = draw;
+      if (img.decode) {
+        img.decode().then(draw).catch(draw);
+      } else if (img.complete) {
+        draw();
+      } else {
+        img.onload = draw;
+      }
     });
   }, PATCHES);
 }
@@ -130,7 +136,13 @@ async function sampleVignette(pngPath) {
         const cornerLum = cornerPatches.reduce((s, p) => s + avgLuma(p), 0) / cornerPatches.length;
         resolve({ centerLum, cornerLum, ratio: centerLum > 0 ? cornerLum / centerLum : 0 });
       };
-      if (img.complete) draw(); else img.onload = draw;
+      if (img.decode) {
+        img.decode().then(draw).catch(draw);
+      } else if (img.complete) {
+        draw();
+      } else {
+        img.onload = draw;
+      }
     });
   }, { centerPatch: CENTER_PATCH, cornerPatches: CORNER_PATCHES });
 }

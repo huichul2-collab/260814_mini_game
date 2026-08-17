@@ -61,15 +61,28 @@ const browser = await puppeteer.launch({
 
 const page = await browser.newPage();
 await page.setViewport({ width: 960, height: 600 });
+page.on('pageerror', (e) => {
+  if (!e.message.includes('linearRampToValueAtTime')) console.warn(`[pageerror] ${e.message}`);
+});
 
 await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'load', timeout: 20000 });
-await sleep(800);
-await page.click('#audio-start-btn').catch(() => {});
+await page.waitForFunction(() => {
+  const btn = document.getElementById('audio-start-btn');
+  return btn && !btn.disabled;
+}, { timeout: 15000 });
+await page.evaluate(() => {
+  const btn = document.getElementById('audio-start-btn');
+  if (btn) btn.click();
+});
+await sleep(2000);
+await page.waitForSelector('#loading', { hidden: true, timeout: 10000 }).catch(() => {});
 await sleep(500);
 
 function getPos() {
   return page.evaluate(() => {
+    if (!window.__debug || !window.__debug.player || !window.__debug.player.root || !window.__debug.player.root.position) return null;
     const p = window.__debug.player.root.position;
+    if (typeof p.x !== 'number' || typeof p.z !== 'number') return null;
     return { x: p.x, y: p.y, z: p.z };
   });
 }
@@ -123,7 +136,9 @@ function testResult(name, pass, msg) {
 console.log('--- 1. 현관문 통과 주행 ---');
 await walkTo({ x: 0, z: 0 });
 const yardWalk = await walkTo({ x: -5, z: 0 });
-testResult('현관문 D4 통과 마당 진입', yardWalk.ok && yardWalk.pos.x < -3.2, `최종 위치 X=${yardWalk.pos.x.toFixed(2)}, Z=${yardWalk.pos.z.toFixed(2)}`);
+const yardX = (yardWalk && yardWalk.pos && typeof yardWalk.pos.x === 'number') ? yardWalk.pos.x : 0;
+const yardZ = (yardWalk && yardWalk.pos && typeof yardWalk.pos.z === 'number') ? yardWalk.pos.z : 0;
+testResult('현관문 D4 통과 마당 진입', yardWalk.ok && yardX < -3.2, `최종 위치 X=${yardX.toFixed(2)}, Z=${yardZ.toFixed(2)}`);
 
 // 카메라가 플레이어 뒤에서 완전히 정착하도록 대기
 await sleep(1200);

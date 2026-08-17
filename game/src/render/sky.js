@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { FOG_CONFIG } from '../../config.js';
 
 /* ---------- 하늘 돔 (은은한 노을 그라디언트, sample1 톤 참고) ---------- */
 export function createSkyDome() {
@@ -19,9 +20,8 @@ export function createSkyDome() {
   return new THREE.Mesh(geo, mat);
 }
 
-/* ---------- 선형 거리 안개 (스카이돔 지평선 색상 #e0793f와 일치) ---------- */
-export function setupFog(scene, near = 8, far = 35) {
-  scene.fog = new THREE.Fog(0xe0793f, near, far);
+/* ---------- 선형 거리 안개 (game/config.js FOG_CONFIG 연동) ---------- */
+export function setupFog(scene, near = FOG_CONFIG.near, far = FOG_CONFIG.far, color = FOG_CONFIG.color) {
+  scene.fog = new THREE.Fog(color, near, far);
   return scene.fog;
 }
-

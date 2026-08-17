@@ -2,6 +2,24 @@ import * as THREE from 'three';
 import { camera } from '../core/context.js';
 import { loadAudioBuffer } from '../assets/loaders.js';
 
+// 헤드리스/가상 환경에서 AudioContext.currentTime이 NaN/비정상일 때 발생할 수 있는 WebAudio 예외 방지
+if (typeof window !== 'undefined' && window.AudioParam) {
+  const origLinear = AudioParam.prototype.linearRampToValueAtTime;
+  if (origLinear) {
+    AudioParam.prototype.linearRampToValueAtTime = function (value, endTime) {
+      if (!Number.isFinite(value) || !Number.isFinite(endTime)) return;
+      return origLinear.call(this, value, endTime);
+    };
+  }
+  const origTarget = AudioParam.prototype.setTargetAtTime;
+  if (origTarget) {
+    AudioParam.prototype.setTargetAtTime = function (value, startTime, timeConstant) {
+      if (!Number.isFinite(value) || !Number.isFinite(startTime) || !Number.isFinite(timeConstant)) return;
+      return origTarget.call(this, value, startTime, timeConstant);
+    };
+  }
+}
+
 /**
  * 전역 AudioListener - 반드시 camera의 자식으로 등록
  */

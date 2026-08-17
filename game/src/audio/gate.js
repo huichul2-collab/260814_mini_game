@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { manager } from '../assets/loaders.js';
+import { OPENING_CONFIG } from '../../config.js';
 
 /**
  * 터치 기기 감지 — pointer:coarse 미디어쿼리 우선, 지원 안 하는 구형
@@ -103,6 +104,7 @@ export function initAudioGate(loadingEl, onStart) {
 
   // 2. 버튼 클릭 핸들러 (제스처 태스크 내에서 AudioContext resume 및 시작 콜백)
   startBtn.addEventListener('click', async () => {
+    console.log('[gate] Start button clicked, fading overlay');
     try {
       const ctx = THREE.AudioContext.getContext();
       if (ctx && ctx.state === 'suspended') {
@@ -124,8 +126,11 @@ export function initAudioGate(loadingEl, onStart) {
     }
 
     // 로딩 엘리먼트 페이드아웃 및 제거
+    container.style.transition = 'opacity 0.4s ease';
     container.style.opacity = '0';
+    container.style.pointerEvents = 'none';
     setTimeout(() => {
+      container.style.display = 'none';
       if (container.parentNode) {
         container.parentNode.removeChild(container);
       }
