@@ -4,6 +4,27 @@
 
 ---
 
+## 2026-08-17 (27) — STATE.md 60줄 정리(브랜치 표·해결 항목을 여기로 이관), M9-A 완료 및 이동 정지 버그 해결 기록
+
+**브랜치 병합 현황(STATE.md 브랜치 표를 여기로 이관 — 전부 완료라 상시 참고 가치가 낮아짐)**:
+- `main`(2층 CLI/통합): M4 구조+캐릭터+오디오+방3개 드레싱+D4 현관문·마당·창문 3개·Space 점프 물리 전부 merge 완료.
+- `gemini/lane-character`, `gemini/lane-audio-content`, `gemini/lane-rooms`(3층): 전부 merge 완료.
+
+**M9-A(방탈출 인터랙션 기반) 완료**: `game/story.js`(대사 테이블) + `src/story/state.js`(플래그/인벤토리 저장소) + `src/interaction/probe.js`(레이캐스트→거리/FOV 판정) + `src/ui/dialogue.js`(하단 대화창) + `src/ui/inventory.js`(껍데기) 신규. 거실 소품 8개(책상/의자/책장/화분/액자/러그/램프/방석)에 `interactive` id 태깅. `interaction-check.mjs` 6/6 통과.
+
+**이동 정지 버그 해결(사용자가 M4 스펙 실수로 직접 진단)**: 책상 z=-2.55일 때 벽까지 여유 0.115m — 플레이어 지름 0.44m보다 좁은 죽은 주머니라 문D1 코너에서 대각선 이동이 막혔다. 진단 순서:
+1. `tools/render-check/stuck-diagnose.mjs` 신규 — 3프레임 연속 정지를 프레임 단위로 검출, 멈춘 순간 resolve() 적용 *전* 중간 위치에서 겹치는 콜라이더를 재검사(정지 *후* 위치는 항상 0개라 거짓음성이었음을 발견).
+2. 갇힌 좌표에서 입력을 반대로 바꾸면 깨끗이 빠져나오는 것 확인 — "정상적인 코너, resolve() 버그 아님" 판정.
+3. `physics/resolve.js`를 MTV 정석(반복마다 최심 콜라이더 1개만 해소, iterations 3→4)으로 재구조화 — 좋은 개선이지만 이 특정 코너 자체는 두 콜라이더가 독립적이라 알고리즘을 바꿔도 안 풀린다는 것도 실측으로 확인.
+4. 진짜 원인(M4 스펙 좌표) 확정 후 desk z=-2.66(벽 밀착, 간격 0.005m)로 수정, `docs/spec/M4-layout.md` §5.2 정정.
+5. 책상이 문D1 개구부 동쪽 일부와 여전히 겹쳐 그 구석을 스치는 경로는 남아있어(같은 성격의 정상 코너), `m4-rooms.mjs`/`stuck-diagnose.mjs`의 bedA/D1→living 구간에 문D1 중앙 경유 웨이포인트 추가.
+6. `prop-bounds-check.mjs`에 벽↔가구/가구↔가구 틈(<플레이어 지름) 경고 추가, 책상↔의자(0.425m)는 화이트리스트.
+7. `m4-rooms.mjs` 13/13 복구, `stuck-diagnose.mjs`에 `KNOWN_FAILURES` 배열 도입(현재 빈 배열 — 알려진 예외 없이 전부 통과).
+
+**검증**: asset-check/layout-check/character-check/audio-check/room-tint-check/prop-bounds-check/input-check/interaction-check/mobile-check/stuck-diagnose/m4-rooms 전부 재실행, 전부 통과.
+
+---
+
 ## 2026-08-17 (26) — `yard-shot.mjs` 카메라 오버라이드 방식 수정 (현관 실측 주행 + 울타리 충돌 3면 + 창문 3개 방향 캡처)
 
 **`yard-shot.mjs` 수정 및 검증**:
