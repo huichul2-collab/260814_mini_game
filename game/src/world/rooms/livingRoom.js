@@ -21,8 +21,14 @@ export function createLivingRoom(scene, camera, renderer) {
   makeMesh(new THREE.CylinderGeometry(1.1, 1.1, 0.02, 24), 0xd1553f, room, [0.2, 0.02, 0.9], {}, { interactive: 'living.rug' });
 
   // ---------- 오브젝트: 책상 ----------
+  // ⚠️ z=-2.55(뒷면 -2.825)였을 때 벽 안쪽면(-2.94)까지 여유가 0.115m
+  // 남았는데, 이게 플레이어 지름(0.44m)보다 좁아서 책상 모서리와 문D1
+  // 옆 벽 잔여조각 사이에 "같은 대각선 입력으로는 못 빠져나오는" 코너를
+  // 만들었다(docs/spec/M4-layout.md §5.2, docs/STATE.md 참고 — M4 스펙
+  // 자체의 실수, resolve() 버그 아님). z=-2.66으로 옮겨 벽에 밀착시켜
+  // (뒷면 -2.935, 간격 0.005) 그 죽은 주머니 자체를 없앤다.
   const desk = new THREE.Group();
-  desk.position.set(0.4, 0, -2.55);
+  desk.position.set(0.4, 0, -2.66);
   desk.userData[TAG.INTERACTIVE] = 'living.desk'; // Group 태깅 — 상판/다리 어디를 클릭해도 책상 전체가 반응
   room.add(desk);
 

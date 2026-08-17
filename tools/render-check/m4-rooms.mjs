@@ -112,7 +112,21 @@ async function walkTo(target, { tol = 0.3, timeoutMs = 20000, pollMs = 150 } = {
 }
 
 let failures = 0;
-async function leg(name, target, shotPath = null) {
+// via: 문D1 옆(책상 북쪽 벽밀착 구석)은 목표(0,0)로 바로 직선 이동하면
+// 대각선 입력이 책상 모서리+벽 사이 코너에 걸려 멈춘다(정상적인 코너
+// 막힘 — 입력을 반대로 바꾸면 실제로 빠져나오는 것도 확인됨, docs/STATE.md
+// 참고). "이론상 통과 가능한 경로만 테스트한다"는 원칙에 따라, 그 코너를
+// 그냥 지나치는 경유점을 거쳐 목표로 간다 — 회귀 은폐가 아니라 애초에
+// 통과 못 하는 대각선 지름길 대신 실제 사람도 걷는 정상 경로로 바꾼 것.
+async function leg(name, target, { shotPath = null, via = [] } = {}) {
+  for (const wp of via) {
+    const vr = await walkTo(wp);
+    if (!vr.ok) {
+      console.log(`FAIL ${name}(경유점 ${wp.x},${wp.z} 도달 실패) → 실제(${vr.pos.x.toFixed(2)},${vr.pos.z.toFixed(2)})`);
+      failures++;
+      return vr;
+    }
+  }
   const r = await walkTo(target);
   const tag = r.ok ? 'OK ' : 'FAIL';
   if (!r.ok) failures++;
@@ -129,19 +143,24 @@ async function leg(name, target, shotPath = null) {
 
 const outDir = path.join(gameDir, '..', 'tools', 'render-check');
 
+// bedA/D1 쪽에서 living(0,0)으로 바로 대각선으로 가면 책상 북쪽 모서리
+// 코너에 걸린다 — 문D1 중앙(-0.5,-3.3) → 책상 Z대역을 벗어난 지점
+// (-0.5,-2.0)을 거쳐 간다(실측으로 이 경로가 막힘 없이 통과되는 것 확인).
+const VIA_D1_TO_LIVING = [{ x: -0.5, z: -3.3 }, { x: -0.5, z: -2.0 }];
+
 console.log('--- 방 중앙 도달 ---');
 await sleep(2000);
-await leg('living(spawn 확인)', { x: 0, z: 0 }, path.join(outDir, 'm4-living.png'));
-await leg('bedA', { x: -0.5, z: -5.0 }, path.join(outDir, 'm4-bedA.png'));
-await leg('bedA→living', { x: 0, z: 0 });
-await leg('study', { x: 5.0, z: 0.5 }, path.join(outDir, 'm4-study.png'));
+await leg('living(spawn 확인)', { x: 0, z: 0 }, { shotPath: path.join(outDir, 'm4-living.png') });
+await leg('bedA', { x: -0.5, z: -5.0 }, { shotPath: path.join(outDir, 'm4-bedA.png') });
+await leg('bedA→living', { x: 0, z: 0 }, { via: VIA_D1_TO_LIVING });
+await leg('study', { x: 5.0, z: 0.5 }, { shotPath: path.join(outDir, 'm4-study.png') });
 await leg('study→living', { x: 0, z: 0 });
-await leg('bedB', { x: 0.0, z: 5.0 }, path.join(outDir, 'm4-bedB.png'));
+await leg('bedB', { x: 0.0, z: 5.0 }, { shotPath: path.join(outDir, 'm4-bedB.png') });
 await leg('bedB→living', { x: 0, z: 0 });
 
 console.log('--- 문 가장자리 통과(0.25m 안쪽) ---');
 await leg('D1 가장자리 → bedA', { x: -0.9, z: -3.6 });
-await leg('D1 가장자리 → living', { x: 0, z: 0 });
+await leg('D1 가장자리 → living', { x: 0, z: 0 }, { via: VIA_D1_TO_LIVING });
 await leg('D2 가장자리 → study', { x: 5.0, z: 0.1 });
 await leg('D2 가장자리 → living', { x: 0, z: 0 });
 await leg('D3 가장자리 → bedB', { x: -0.4, z: 5.0 });

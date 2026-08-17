@@ -4,7 +4,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer-core';
-import { ROOMS, WALLS, DOORS, WINDOWS } from '../../game/src/world/layout.js';
+import { ROOMS, WALLS, DOORS, WINDOWS, WALL_T } from '../../game/src/world/layout.js';
+import { PLAYER_CONFIG } from '../../game/config.js';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const gameDir = path.resolve(process.argv[2] || path.join(scriptDir, '..', '..', 'game'));
@@ -53,7 +54,8 @@ await sleep(800);
 
 await page.waitForFunction(() => !!(window.__debug && window.__debug.rooms), { timeout: 10000 });
 
-const results = await page.evaluate(() => {
+const results = await page.evaluate(async () => {
+  const { TAG } = await import('./src/core/tags.js');
   const T = window.__debug.THREE;
   const scene = window.__debug.scene;
   const roomsMap = window.__debug.rooms;
@@ -100,6 +102,7 @@ const results = await page.evaluate(() => {
               roomId,
               index: counter,
               type: child.isGroup ? 'group' : 'mesh',
+              interactiveId: typeof child.userData[TAG.INTERACTIVE] === 'string' ? child.userData[TAG.INTERACTIVE] : null,
               minX: box.min.x, maxX: box.max.x,
               minZ: box.min.z, maxZ: box.max.z,
               bottomY: box.min.y, topY: box.max.y,
@@ -164,6 +167,49 @@ for (const w of WALLS) {
   }
 }
 
+// 벽 솔리드 조각(XZ 평면 기준) — 문이 있는 벽은 개구부로 둘로 쪼개진다(house.js와
+// 같은 규칙). 창문은 XZ 평면에서는 안 뚫려 있다(y 0.95~1.85만 개구부라 바닥/천장
+// 높이엔 벽이 그대로 있음) — 그래서 창문은 안 쪼갠다.
+const wallPieces = [];
+for (const w of WALLS) {
+  const segs = [];
+  if (w.doorId) {
+    const d = DOORS[w.doorId];
+    const halfW = d.width / 2;
+    segs.push([w.from, d.center - halfW]);
+    segs.push([d.center + halfW, w.to]);
+  } else {
+    segs.push([w.from, w.to]);
+  }
+  for (const [from, to] of segs) {
+    if (to - from <= 1e-6) continue; // 개구부가 벽 끝까지 닿는 경우(초근접) 조각 없음
+    wallPieces.push({
+      minX: w.axis === 'x' ? from : w.at - WALL_T / 2,
+      maxX: w.axis === 'x' ? to : w.at + WALL_T / 2,
+      minZ: w.axis === 'z' ? from : w.at - WALL_T / 2,
+      maxZ: w.axis === 'z' ? to : w.at + WALL_T / 2,
+      label: `벽#${w.axis === 'x' ? `Z=${w.at}` : `X=${w.at}`}[${from},${to}]`,
+    });
+  }
+}
+
+// 두 축정렬 사각형 사이 최소거리(겹치면 0, 대각선으로 떨어져 있으면 코너간 거리).
+function rectGapXZ(a, b) {
+  const dx = Math.max(b.minX - a.maxX, a.minX - b.maxX, 0);
+  const dz = Math.max(b.minZ - a.maxZ, a.minZ - b.maxZ, 0);
+  return Math.hypot(dx, dz);
+}
+
+const PLAYER_DIAM = PLAYER_CONFIG.radius * 2;
+const FLUSH_EPS = 0.01; // 이 이하 틈은 "밀착"으로 간주(부동소수점 오차 포함)
+// 정상 배치라 틈이 좁아도 되는 조합 — 이유를 남긴다.
+const GAP_WHITELIST = [
+  ['living.desk', 'living.chair'], // 의자가 책상 밑으로 들어가는 게 정상 배치라 다리 사이 틈이 좁다
+];
+function isWhitelisted(labelA, labelB) {
+  return GAP_WHITELIST.some(([a, b]) => (labelA.includes(a) && labelB.includes(b)) || (labelA.includes(b) && labelB.includes(a)));
+}
+
 console.log(`검사한 소품(그룹/방-직속 메시): ${results.length}개`);
 console.log('');
 
@@ -183,8 +229,19 @@ for (const item of results) {
     return ox > 0 && oz > 0 && oy > 0;
   });
 
-  const label = `${item.roomId} #${item.index}(${item.type}) world X[${item.minX.toFixed(2)},${item.maxX.toFixed(2)}] Z[${item.minZ.toFixed(2)},${item.maxZ.toFixed(2)}] Y[${item.bottomY.toFixed(2)},${item.topY.toFixed(2)}]`;
+  const nameTag = item.interactiveId ? `/${item.interactiveId}` : '';
+  const label = `${item.roomId} #${item.index}(${item.type}${nameTag}) world X[${item.minX.toFixed(2)},${item.maxX.toFixed(2)}] Z[${item.minZ.toFixed(2)},${item.maxZ.toFixed(2)}] Y[${item.bottomY.toFixed(2)},${item.topY.toFixed(2)}]`;
   let ok = true;
+
+  // 벽↔가구 틈 검사 — 죽은 주머니(플레이어가 못 들어가는 폭) 재발 방지.
+  for (const wp of wallPieces) {
+    const gap = rectGapXZ(item, wp);
+    if (gap > FLUSH_EPS && gap < PLAYER_DIAM) {
+      warnings++;
+      ok = false;
+      console.log(`WARN ${label} — ${wp.label}과 틈 ${gap.toFixed(3)}m(플레이어 지름 ${PLAYER_DIAM}m 미만, 밀착도 아님) — 죽은 주머니 의심`);
+    }
+  }
 
   if (outOfBounds) {
     warnings++;
@@ -206,6 +263,33 @@ for (const item of results) {
     console.log(`OK   ${label}`);
   }
 }
+
+// 가구↔가구 틈 검사 — 같은 방 안의 소품끼리도 같은 클래스 버그가 날 수 있다
+// (예: 책상+의자). 화이트리스트는 위 GAP_WHITELIST 참고.
+console.log('');
+console.log('--- 가구↔가구 틈 검사 ---');
+let furnitureGapWarnings = 0;
+for (const room of ROOMS) {
+  const items = results.filter((it) => it.roomId === room.id);
+  for (let i = 0; i < items.length; i++) {
+    for (let j = i + 1; j < items.length; j++) {
+      const a = items[i];
+      const b = items[j];
+      const labelA = a.interactiveId || `${a.roomId}#${a.index}`;
+      const labelB = b.interactiveId || `${b.roomId}#${b.index}`;
+      const gap = rectGapXZ(a, b);
+      if (gap <= FLUSH_EPS || gap >= PLAYER_DIAM) continue;
+      if (isWhitelisted(labelA, labelB)) {
+        console.log(`SKIP(화이트리스트) ${labelA} ↔ ${labelB} 틈 ${gap.toFixed(3)}m — 정상 배치(GAP_WHITELIST 주석 참고)`);
+        continue;
+      }
+      furnitureGapWarnings++;
+      console.log(`WARN ${labelA} ↔ ${labelB} 틈 ${gap.toFixed(3)}m(플레이어 지름 ${PLAYER_DIAM}m 미만, 밀착도 아님) — 죽은 주머니 의심`);
+    }
+  }
+}
+if (furnitureGapWarnings === 0) console.log('가구↔가구 틈 경고 없음');
+warnings += furnitureGapWarnings;
 
 console.log('');
 console.log('로그:', logs.length ? logs : '없음');
