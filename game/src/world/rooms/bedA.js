@@ -59,7 +59,7 @@ export function createBedA(scene) {
 
   // 5. 벽 액자 (북쪽 벽 안쪽면: Z = -6.92, X = -1.3)
   const pictureFrame = new THREE.Group();
-  pictureFrame.position.set(-1.3, 1.5, -6.92);
+  pictureFrame.position.set(0.8, 1.5, -6.92);
   room.add(pictureFrame);
   makeMesh(new THREE.BoxGeometry(0.7, 0.5, 0.03), 0x5a3826, pictureFrame, [0, 0, 0]);
   makeMesh(new THREE.BoxGeometry(0.6, 0.4, 0.01), 0x5f9e52, pictureFrame, [0, 0, 0.02]);

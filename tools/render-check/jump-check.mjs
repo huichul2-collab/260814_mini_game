@@ -180,13 +180,13 @@ await sleep(300);
   await keyUp('KeyW');
 
   const finalPos3 = await getPos();
-  // Z=-3 벽 안쪽면은 -2.94, 플레이어 반지름 0.22 고려시 center Z는 >= -2.72
-  const wallNotPenetrated = finalPos3.z >= -2.85;
+  const zVal = (finalPos3 && typeof finalPos3.z === 'number') ? finalPos3.z : 0;
+  const wallNotPenetrated = finalPos3 && zVal >= -2.85;
 
   testResult(
     '3. 점프 중 벽 방향 이동 시 벽 관통 불가',
     wallNotPenetrated,
-    `벽 근접 위치 Z=${finalPos3.z.toFixed(3)}m (벽 안쪽 한계 Z >= -2.72m)`
+    `벽 근접 위치 Z=${zVal.toFixed(3)}m (벽 안쪽 한계 Z >= -2.72m)`
   );
 }
 

@@ -54,7 +54,7 @@ export function createLivingRoom(scene, camera, renderer) {
 
   // ---------- 아이템 증식: 책장 ----------
   const bookshelf = new THREE.Group();
-  bookshelf.position.set(-2.75, 0, -0.9);
+  bookshelf.position.set(-2.75, 0, 1.8);
   room.add(bookshelf);
 
   makeMesh(new THREE.BoxGeometry(0.28, 1.3, 0.05), 0x7a4a2a, bookshelf, [0, 0.65, -0.375]);
