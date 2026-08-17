@@ -46,3 +46,12 @@ export function markInspected(objectId) {
 export function hasInspected(objectId) {
   return hasFlag(`inspected:${objectId}`);
 }
+
+// M9-B 전용 헬퍼 — 문 잠금 해제 상태. 'unlockedDoors:' 네임스페이스로 고정.
+export function unlockDoor(doorId) {
+  setFlag(`unlockedDoors:${doorId}`);
+}
+
+export function isDoorUnlocked(doorId) {
+  return hasFlag(`unlockedDoors:${doorId}`);
+}

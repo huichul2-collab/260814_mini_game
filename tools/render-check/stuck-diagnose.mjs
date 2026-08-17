@@ -256,10 +256,14 @@ const legs = [
 
 // stuck-diagnose.mjs가 항상 exit 1인 채로 있으면 새 실패가 생겨도 아무도
 // 못 알아챈다 — 여기 있는 이름만 실패해도 exit 0(+"알려진 예외 N건"),
-// 목록에 없는 실패가 하나라도 있으면 exit 1. 지금은 비어 있다(2단계
-// 책상 벽밀착 + 위 경유점 라우팅으로 알려진 케이스가 전부 사라졌기
-// 때문) — 구조만 남겨둔다.
-const KNOWN_FAILURES = [];
+// 목록에 없는 실패가 하나라도 있으면 exit 1.
+//
+// M9-B로 D2가 잠기면서 서재로 직행하는 두 구간이 "정상적으로" 막힌다 —
+// 진단 결과 콜라이더 1개(lock_D2)의 정면 충돌이지 옛날의 코너 상쇄 패턴이
+// 아니다(§정지 지점 진단 참고). 퍼즐을 풀지 않고 걸어서만 통과하려는
+// 이 스크립트 특성상 M9-C까지(D1/D3/D4도 잠기기 전까지) 계속 여기 남는다
+// — 잠금이 실제로 몇 개인지는 story.js LOCKS를 보면 된다.
+const KNOWN_FAILURES = ['study', 'D2 가장자리 → study'];
 
 let stuckReport = null;
 let failCount = 0;
@@ -296,7 +300,12 @@ for (const leg of legs) {
       stuckReport.wantedAtFreeze = r.wantedAtFreeze;
       stuckReport.yaw = yaw;
     }
-    break; // 한 번 멈추면 게임이 실질적으로 죽은 상태라 더 진행해도 의미 없다(기존 관찰과 일치).
+    // ⚠️ 예전엔 여기서 break했다 — "한 번 멈추면 게임이 죽은 상태"라는
+    // 가정이었는데, 그건 그때의 유일한 원인(책상 코너 트랩)이 진짜로
+    // 전역을 얼려버렸기 때문이었다. M9-B로 D2가 잠기면서 "막힘"의 원인이
+    // 하나 더 생겼다 — 잠긴 문에 부딪히는 건 국소적이고 정상적인 차단
+    // 이라 플레이어가 다른 방향으로는 얼마든지 움직일 수 있다(m4-rooms.mjs
+    // 로 11/13 실측 확인). 그래서 이제는 멈춰도 다음 구간을 계속 시도한다.
   } else {
     console.log(`FAIL ${leg.name} → (${r.pos.x.toFixed(2)},${r.pos.z.toFixed(2)}) ${r.frames}프레임 안에 도달도 정지도 아님(타임아웃)`);
     failCount++;

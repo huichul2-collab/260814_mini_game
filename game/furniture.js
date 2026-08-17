@@ -25,6 +25,7 @@ export const FURNITURE = [
   { id: 'living.plant', room: 'living', type: 'plant', pos: [-2.75, 0, 1.15], rotY: 0 },
   { id: 'living.frame', room: 'living', type: 'frame', pos: [1.0, 1.55, -2.88], rotY: 0 },
   { id: 'living.cushion', room: 'living', type: 'cushion', pos: [0.9, 0.04, 1.5], rotY: 0 },
+  { id: 'living.clock', room: 'living', type: 'clock', pos: [-2.90, 1.60, -2.00], rotY: Math.PI / 2 }, // 임시 좌표(§10.4) — 배치맵 오면 교체
 
   // ---------- 침실 A (bedA) ----------
   { id: null, room: 'bedA', type: 'doubleBed', pos: [-1.3, 0, -5.84], rotY: 0 },

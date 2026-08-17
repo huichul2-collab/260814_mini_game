@@ -12,6 +12,7 @@ import { makeNightstand, makeSmallNightstand } from './props/nightstand.js';
 import { makeWardrobe } from './props/wardrobe.js';
 import { makeDresser } from './props/dresser.js';
 import { makeArmchair, makeTeaTable } from './props/seating.js';
+import { makeClock } from './props/clock.js';
 
 const PROP_BUILDERS = {
   desk: (item) => makeDesk(item.id),
@@ -38,6 +39,7 @@ const PROP_BUILDERS = {
   dresser: (item) => makeDresser(item.id),
   armchair: (item) => makeArmchair(item.id),
   teaTable: (item) => makeTeaTable(item.id),
+  clock: (item) => makeClock(item.id),
 };
 
 export function createFurnitureForRoom(scene, roomName, camera, renderer) {

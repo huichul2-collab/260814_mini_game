@@ -1,9 +1,11 @@
 import * as THREE from 'three';
 import { TAG } from '../core/tags.js';
 import { INTERACTION_CONFIG } from '../../config.js';
-import { OBJECTS } from '../../story.js';
+import { OBJECTS, LOCKS, PUZZLES } from '../../story.js';
 import { showDialogue } from '../ui/dialogue.js';
-import { markInspected } from '../story/state.js';
+import { showKeypadModal } from '../ui/modal.js';
+import { markInspected, isDoorUnlocked, unlockDoor } from '../story/state.js';
+import { rebuildFrom } from '../physics/colliders.js';
 
 /* ------------------------------------------------------------------ *
  *  가까운 사물을 좌클릭하면 하단에 설명이 뜬다(M9-A 완료 조건 전체).
@@ -97,6 +99,35 @@ export function initProbe(scene, camera, renderer, player) {
 
     if (angle > fovHalfRad) {
       showDialogue('', '그쪽을 보고 있지 않다');
+      return;
+    }
+
+    // M9-B: 잠긴 문 패널 — id가 'lock_D2' 형식이면 대화창이 아니라 키패드
+    // 모달을 연다. 패널이 잠겨 있는 동안만 여기 도달한다 — 해제되면
+    // group.visible=false라 raycast가 애초에 이 오브젝트를 못 맞힌다
+    // (three.js Raycaster는 invisible 오브젝트를 건너뛴다).
+    if (found.id.startsWith('lock_')) {
+      const doorId = found.id.slice('lock_'.length);
+      const lock = LOCKS[doorId];
+      if (!lock) {
+        console.warn('[probe] story.js LOCKS에 없는 문:', doorId);
+        return;
+      }
+      if (isDoorUnlocked(doorId)) return; // 방어적 — 위 이유로 보통 도달 안 함
+      const puzzle = PUZZLES[lock.puzzle];
+      showKeypadModal({
+        promptText: lock.lockedText,
+        length: puzzle.length,
+        answer: puzzle.answer,
+        wrongText: puzzle.wrongText,
+        onSuccess: () => {
+          const unlockPanel = found.obj.userData._unlockPanel;
+          if (unlockPanel) unlockPanel();
+          unlockDoor(doorId);
+          rebuildFrom(scene); // 콜라이더 재수집 — 패널 해제 절차의 마지막 단계
+          showDialogue('', lock.unlockedText);
+        },
+      });
       return;
     }
 

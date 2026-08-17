@@ -8,6 +8,16 @@
  *  대응을 자동 검사한다(오타·누락은 검증 스크립트가 FAIL로 잡는다).
  * ------------------------------------------------------------------ */
 
+// M9-B: 거실 시계가 가리키는 시각 — 바늘 각도(props/clock.js)와 P1 정답이
+// 전부 이 값 하나에서 파생된다. 여기만 고치면 바늘 각도·시계 조사 대사·
+// D2 정답이 전부 같이 바뀐다("단서와 정답이 두 곳에 적히면 반드시 어긋난다",
+// docs/spec/M9-escape.md §10.3).
+export const CLOCK_TIME = { hour: 8, minute: 25 };
+
+function pad2(n) {
+  return String(n).padStart(2, '0');
+}
+
 export const OBJECTS = {
   'living.desk': { name: '책상', text: '오래 써서 반질반질해진 나무 책상.' },
   'living.chair': { name: '의자', text: '앉으면 삐걱 소리가 날 것 같다.' },
@@ -17,6 +27,31 @@ export const OBJECTS = {
   'living.rug': { name: '러그', text: '푹신하고 붉은 러그.' },
   'living.lamp': { name: '스탠드 조명', text: '클릭하면 켜지고 꺼진다.' },
   'living.cushion': { name: '방석', text: '바닥에 놓인 방석.' },
+  'living.clock': {
+    name: '멈춘 시계',
+    text: `${CLOCK_TIME.hour}시 ${pad2(CLOCK_TIME.minute)}분을 가리킨 채 멈춰 있다.`,
+  },
+};
+
+// M9-B: 잠긴 문. 이 배치에서는 D2 하나뿐이다 — D1/D3/D4는 M9-C에서 데이터
+// 한 줄씩 추가한다(코드는 이미 doorId로 일반화돼 있다, world/doorLock.js).
+export const LOCKS = {
+  D2: {
+    puzzle: 'P1',
+    lockedText: '숫자 자물쇠가 걸려 있다. 네 자리다.',
+    unlockedText: '자물쇠가 풀렸다.',
+  },
+};
+
+export const PUZZLES = {
+  P1: {
+    type: 'digits',
+    length: 4,
+    answer: '0825', // ⭐ 정답 — 여기만 고치면 된다. CLOCK_TIME과 독립적으로 적는
+    // 값이라, 여기 또는 CLOCK_TIME 둘 중 하나만 고치면 어긋난다 — 그래서
+    // escape-flow.mjs 1번이 매번 자동으로 둘을 대조한다(사람이 놓쳐도 잡힘).
+    wrongText: '맞지 않는다.',
+  },
 };
 
 // M9-A 시점에는 자리만 만들어둔다 — 오프닝 연출은 M9-B 이후 붙는다.

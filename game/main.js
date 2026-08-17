@@ -4,6 +4,7 @@ import { tick } from './src/core/loop.js';
 import { createSkyDome, setupFog } from './src/render/sky.js';
 import { setupLighting } from './src/render/lighting.js';
 import { createHouse } from './src/world/house.js';
+import { initDoorLocks } from './src/world/doorLock.js';
 import { createLivingRoom } from './src/world/rooms/livingRoom.js';
 import { createBedA } from './src/world/rooms/bedA.js';
 import { createStudy } from './src/world/rooms/study.js';
@@ -37,6 +38,7 @@ scene.add(createSkyDome());
 setupFog(scene);
 setupLighting(scene);
 createHouse(scene); // M4: layout.js 기반 바닥·벽·문
+const doorLocks = initDoorLocks(scene); // M9-B: story.js LOCKS만큼 잠금 패널 — rebuildFrom 전에 있어야 초기 콜라이더에 포함됨
 const livingRoom = createLivingRoom(scene, camera, renderer);
 const bedA = createBedA(scene);
 const study = createStudy(scene);
@@ -63,6 +65,7 @@ window.__debug = {
   scene,
   THREE,
   rooms: { living: livingRoom.room, bedA: bedA.room, study: study.room, bedB: bedB.room },
+  doorLocks, // M9-B: escape-flow.mjs가 잠금 패널 상태를 직접 조회할 때 씀
 };
 
 // ---------- 오디오 게이트 (브라우저 오토플레이 정책상 사용자 제스처 필요) ----------

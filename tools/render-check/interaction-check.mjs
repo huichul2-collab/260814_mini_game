@@ -116,9 +116,19 @@ const idCheck = await page.evaluate(async () => {
     const id = o.userData && o.userData[TAG.INTERACTIVE];
     if (typeof id === 'string') sceneIds.add(id);
   });
+  // M9-B: 'lock_D2' 같은 문 잠금 패널 id는 story.js의 OBJECTS가 아니라
+  // LOCKS(doorId 기준)에서 대응을 찾는다 — probe.js가 이 접두사를 특별
+  // 취급해서 대화창 대신 키패드 모달을 연다.
   const storyKeys = new Set(Object.keys(story.OBJECTS));
-  const missingInStory = [...sceneIds].filter((id) => !storyKeys.has(id));
-  const unusedInScene = [...storyKeys].filter((id) => !sceneIds.has(id));
+  const lockDoorIds = new Set(Object.keys(story.LOCKS || {}));
+  function hasCounterpart(id) {
+    if (id.startsWith('lock_')) return lockDoorIds.has(id.slice('lock_'.length));
+    return storyKeys.has(id);
+  }
+  const missingInStory = [...sceneIds].filter((id) => !hasCounterpart(id));
+  const unusedObjectKeys = [...storyKeys].filter((id) => !sceneIds.has(id));
+  const unusedLockKeys = [...lockDoorIds].filter((doorId) => !sceneIds.has(`lock_${doorId}`));
+  const unusedInScene = [...unusedObjectKeys, ...unusedLockKeys.map((d) => `LOCKS.${d}`)];
   return { sceneIds: [...sceneIds], missingInStory, unusedInScene };
 });
 console.log(`씬에서 발견한 interactive id (${idCheck.sceneIds.length}개): ${idCheck.sceneIds.join(', ')}`);
