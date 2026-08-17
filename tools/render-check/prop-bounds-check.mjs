@@ -294,5 +294,13 @@ warnings += furnitureGapWarnings;
 console.log('');
 console.log('로그:', logs.length ? logs : '없음');
 console.log('');
+
+const EXPECTED_PROPS = 24;
+if (results.length !== EXPECTED_PROPS) {
+  console.error(`FAIL: 소품 총 개수 오차 — 기대값 ${EXPECTED_PROPS}개, 실제 ${results.length}개`);
+  process.exit(1);
+}
+
+console.log(`OK   소품 총 개수 ${results.length}개 정확히 일치`);
 console.log(warnings === 0 ? '경고 없음' : `경고 ${warnings}건 — 최종 판단은 사람이 할 것`);
 process.exit(0);
