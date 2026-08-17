@@ -4,6 +4,22 @@
 
 ---
 
+## 2026-08-18 (28) — `gemini/lane-furniture` merge 검증 3라운드: baseline을 대상 자신에서 만들면 왜 무의미한가
+
+**배경**: `gemini/lane-furniture`(데이터 기반 가구 리팩터링, `game/furniture.js`+`furnitureLoader.js`+`props/*.js` 11개 모듈)를 merge하기 전, 브랜치 자신의 커밋 `2def24d`가 "100% 결정론적"이라며 `visual-diff.mjs`+`baseline/`을 함께 만들어 1.0000/0.0000으로 통과시켰다. 이 결과가 왜 무의미했는지, 그리고 결국 어떻게 실제로 검증했는지 3라운드에 걸쳐 정리한다.
+
+**1라운드 — Gemini의 "편차 0.0000"이 틀렸던 이유**: baseline이 검사 대상 자신의 브랜치(`2def24d`, 가구 리팩터링 `8c08bf4` 이후)에서 촬영됐다. "브랜치 렌더 ↔ 브랜치 렌더"를 비교하니 자명하게 1.0000/0.0000이 나온 것이지, 리팩터링 전후를 비교한 게 아니었다. 검증 기준(baseline)을 검사 대상 자신에서 만들면 그 검증은 논리적으로 아무것도 증명하지 못한다 — 이게 이번에 `docs/STATE.md` 불변 규칙 10번으로 남긴 원칙이다.
+
+**2라운드 — main에서 진짜 baseline을 찍었더니 걷기(walkTo) 허용오차가 스크린샷을 흔들었다**: `tools/render-check/m4-rooms.mjs`의 결정론 촬영 코드(카메라 정지 폴링+uTime 고정)만 main으로 가져와 정직하게 baseline을 다시 찍었다. `test-5-runs.mjs`로 5회 반복 측정한 결과 living/bedA/study 3개 방에서 채널당 최대 4.13까지 편차가 났다 — `walkTo()`의 도착 허용오차(`tol=0.3m`)때문에 걸어서 도착하는 최종 좌표 자체가 매 실행마다 미세하게 달라졌고, 카메라 프레이밍이 흔들려 화면에 잡히는 벽/바닥 비율이 바뀐 것이었다. **한 스크립트("도달하는가")가 스크린샷 촬영("어떻게 보이는가")까지 겸한 게 근본 원인** — `docs/STATE.md` 불변 규칙 9번으로 남겼다.
+
+**3라운드 — 결국 픽셀이 아니라 씬 그래프로 답했다**: "가구 리팩터링이 렌더를 바꿨나"는 걷기 허용오차+물리 dt+카메라 감쇠라는 비결정성 3겹을 통과한 픽셀로 좌표가 같은지 묻는 질문이었다. `tools/render-check/scene-dump.mjs`+`scene-diff.mjs`를 신규로 만들어 씬의 모든 메시(좌표/회전/스케일/geometry 파라미터/색/userData)를 직접 비교했더니 노이즈 0으로 답이 나왔다 — main과 `gemini/lane-furniture`의 월드 메시 151개(당시 필터 기준)가 완전히 일치. 이걸로 merge를 확정했다.
+
+**부수 발견 — 나무 크기가 새로고침마다 달라짐**: scene-dump를 자체 검증(main을 두 번 덤프)하다가 `world/exterior.js`의 `Math.random()`(원경 나무 크기 결정, 이 파일에서 유일한 사용처)이 매 페이지 로드마다 다른 값을 낸다는 걸 발견했다. 검증 노이즈이기도 했지만, 더 중요하게는 **플레이어가 새로고침할 때마다 화면이 미묘하게 달라진다**는 뜻이었다 — 방탈출 게임에서 단서 오브젝트가 될 수 있는 만큼 위험 신호였다. `config.js`에 `WORLD_SEED`를 노출하고 mulberry32(32비트 정수 시드 PRNG)로 교체. `game/src/` 전체(vendor/ 제외)에 `Math.random()`을 grep한 결과 이 한 곳뿐이었음을 확인. 시드 고정 후 scene-dump의 bbox 필터(집+마당 ±8.5, 원경 제외용 임시 조치였음)를 제거 — 151개에서 177개(원경 언덕 6+나무 20 포함)로 늘었고 diff는 여전히 0.
+
+**최종 확정**: `visual-diff.mjs` 문턱값을 실측 노이즈(0.079) 기반으로 상관 >=0.999, RGB 차이 <=0.5로 재확정(Gemini가 처음 제안한 0.995/1.0은 무효 데이터 기반이었음). `m4-rooms.mjs`는 주행 테스트 전용으로 되돌리고, `visual-shot.mjs`(텔레포트+카메라 고정+60프레임 감쇠 수렴)가 촬영을 전담. `prop-bounds-check.mjs`에 `EXPECTED_PROPS=24` 개수 검증 추가. merge 후 scene-diff 0건, visual-diff 전부 통과(diff 0.001~0.036), 전체 검증 스크립트(asset-check/layout-check/m4-rooms 13/13/character-check/audio-check/room-tint-check/prop-bounds-check 24/24/input-check/interaction-check/stuck-diagnose/mobile-check) 전부 통과 확인 후 merge 확정, `gemini/lane-furniture` 브랜치 삭제.
+
+---
+
 ## 2026-08-17 (27) — STATE.md 60줄 정리(브랜치 표·해결 항목을 여기로 이관), M9-A 완료 및 이동 정지 버그 해결 기록
 
 **브랜치 병합 현황(STATE.md 브랜치 표를 여기로 이관 — 전부 완료라 상시 참고 가치가 낮아짐)**:

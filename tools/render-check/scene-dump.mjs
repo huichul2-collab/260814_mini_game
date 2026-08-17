@@ -86,23 +86,18 @@ const dump = await page.evaluate(() => {
   const scl = new THREE.Vector3();
   const euler = new THREE.Euler();
 
-  // ⚠️ world/exterior.js가 나무 스케일을 `0.8 + Math.random()*0.5`로 매번
-  // 랜덤하게 준다(그 파일에서 Math.random()을 쓰는 유일한 곳 — grep으로
-  // 확인함). 씬을 새로고침할 때마다 나무 트렁크/잎의 월드 Y가 바뀌어서
-  // scene-dump를 그대로 두 번 찍기만 해도 다르게 나온다(직접 재현함).
-  // 가구 리팩터링과 전혀 무관한 노이즈라, exterior.js 자신의 나무 배치
-  // 규칙과 똑같은 경계(X/Z ±8.5 — 집+마당 바깥)로 걸러서 집+마당 안쪽만
-  // 덤프한다. 하늘돔/언덕/나무는 좌표가 전부 이 경계 밖이라 자동 제외되고,
-  // 지면(ground)은 원점 근처라 남지만 정점 변위가 고정 수식이라 안전하다.
-  const BBOX = 8.5;
+  // ⚠️ world/exterior.js가 예전엔 나무 스케일을 Math.random()으로 매번
+  // 랜덤하게 줘서(그 파일에서 Math.random()을 쓰는 유일한 곳이었다 — grep
+  // 으로 확인) 씬을 두 번 찍기만 해도 원경 나무 좌표가 달라졌었다. 그래서
+  // 한동안 집+마당 경계(X/Z ±8.5) 밖을 통째로 걸러서 덤프했는데,
+  // config.js의 WORLD_SEED로 시드 고정한 뒤로는 그 필터가 필요 없다 —
+  // 원경(언덕·나무)까지 전부 덤프해야 exterior.js가 망가지는 회귀도 잡힌다.
   const out = [];
   scene.traverse((o) => {
     if (!o.isMesh) return; // 조명/카메라/그룹은 isMesh=false라 자동 제외
     if (playerRoot && isUnderPlayer(o)) return; // 플레이어 캐릭터 메시 제외
 
     o.updateWorldMatrix(true, false);
-    const wp = new THREE.Vector3().setFromMatrixPosition(o.matrixWorld);
-    if (Math.abs(wp.x) > BBOX || Math.abs(wp.z) > BBOX) return; // 집+마당 바깥(원경 장식) 제외
     o.matrixWorld.decompose(pos, quat, scl);
     euler.setFromQuaternion(quat);
 

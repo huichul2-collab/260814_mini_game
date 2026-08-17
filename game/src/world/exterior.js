@@ -1,5 +1,22 @@
 import * as THREE from 'three';
 import { mat } from '../render/materials.js';
+import { WORLD_SEED } from '../../config.js';
+
+// mulberry32 — 32비트 정수 시드 하나로 도는 초소형 결정론 PRNG. 원경 나무
+// 크기에 예전엔 Math.random()을 썼는데, 새로고침마다 나무 크기가 달라지면
+// (a) 검증 스크린샷이 실행마다 흔들리고 (b) 방탈출 게임에서 단서가 될
+// 오브젝트가 새로고침마다 미묘하게 달라지는 위험이 있어서 시드 기반으로
+// 바꿨다. 시드는 config.js의 WORLD_SEED — 그 값을 바꾸면 나무 배치가 바뀐다.
+function mulberry32(seed) {
+  let t = seed >>> 0;
+  return function () {
+    t += 0x6d2b79f5;
+    let r = t;
+    r = Math.imul(r ^ (r >>> 15), r | 1);
+    r ^= r + Math.imul(r ^ (r >>> 7), r | 61);
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
 /**
  * 방 바깥 지형 및 원경 로우폴리 오브젝트(언덕, 나무) 생성
@@ -79,6 +96,7 @@ export function createExterior(scene) {
 
   console.log('[exterior] Removed trees inside house+yard bbox X[-8.5,8.5]·Z[-8.5,8.5]:', removedTrees);
 
+  const rand = mulberry32(WORLD_SEED);
   activeTreePositions.forEach(([x, z]) => {
     const tree = new THREE.Group();
     const trunk = new THREE.Mesh(trunkGeo, trunkMat);
@@ -90,7 +108,7 @@ export function createExterior(scene) {
     tree.add(leaves);
 
     tree.position.set(x, -0.1, z);
-    const s = 0.8 + Math.random() * 0.5;
+    const s = 0.8 + rand() * 0.5;
     tree.scale.set(s, s, s);
     group.add(tree);
   });
