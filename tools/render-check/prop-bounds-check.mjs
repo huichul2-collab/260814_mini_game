@@ -295,7 +295,13 @@ console.log('');
 console.log('로그:', logs.length ? logs : '없음');
 console.log('');
 
-const EXPECTED_PROPS = 24;
+// M9-B(2026-08-18): 24 → 27. 거실 시계(living.clock) 1개 추가 + 시계
+// 내부의 바늘 피벗 그룹 2개(hourHand/minuteHand)가 이 스크립트의 기존
+// "중첩 Group도 각자 하나로 센다" 규칙에 걸려 별도 항목으로 잡힌다
+// (handsGroup 자체는 자기 지오메트리가 없어 빈 박스로 걸러짐 — 그래서
+// +4가 아니라 +3). 문 잠금 패널(lock_D2)은 roomsMap 그룹 밖(scene에 직접
+// 추가)이라 이 스크립트 집계에 안 잡힌다.
+const EXPECTED_PROPS = 27;
 if (results.length !== EXPECTED_PROPS) {
   console.error(`FAIL: 소품 총 개수 오차 — 기대값 ${EXPECTED_PROPS}개, 실제 ${results.length}개`);
   process.exit(1);
