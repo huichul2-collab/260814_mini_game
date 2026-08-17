@@ -19,7 +19,11 @@ export function makeMesh(geo, color, parent, pos, extraMat = {}, opts = {}) {
 
   if (opts.solid) mesh.userData[TAG.SOLID] = true;
   if (opts.fadeable) mesh.userData[TAG.FADEABLE] = true;
-  if (opts.interactive) mesh.userData[TAG.INTERACTIVE] = true;
+  // interactive: 문자열이면 '방id.오브젝트id' 형식의 상호작용 id로 태깅한다
+  // (interaction/probe.js가 조상을 거슬러 올라가며 이 키를 찾는다). 기존
+  // boolean true 호출부(있다면)도 계속 동작하도록 값 그대로 저장한다 — 다만
+  // id가 없는 true 태그는 story.js 대사와 연결할 수 없다.
+  if (opts.interactive) mesh.userData[TAG.INTERACTIVE] = opts.interactive;
   if (opts.roomId) mesh.userData[TAG.ROOM_ID] = opts.roomId;
 
   (parent || scene).add(mesh);

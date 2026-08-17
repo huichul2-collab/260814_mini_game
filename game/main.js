@@ -18,6 +18,8 @@ import { initAudioGate } from './src/audio/gate.js';
 import { playBGM } from './src/audio/audio.js';
 import { initFootsteps } from './src/audio/footsteps.js';
 import { loadAudioBuffer } from './src/assets/loaders.js';
+import { initProbe } from './src/interaction/probe.js';
+import { initInventory } from './src/ui/inventory.js';
 
 /* ------------------------------------------------------------------ *
  *  부트스트랩 전용 파일 (로드맵 §3 "main.js는 통합자 전용").
@@ -46,6 +48,8 @@ rebuildFrom(scene); // 플레이어는 solid 태그가 없으니 자기 자신�
 
 const followCam = createFollowCamera(camera, renderer.domElement, player.root.position, scene);
 initController(player, followCam.getYaw);
+initProbe(scene, camera, renderer, player); // M9-A: 가까운 사물 좌클릭 → 하단 설명
+initInventory();
 
 // 디버그 훅 — 헤드리스 검증 스크립트가 위치/카메라/씬 상태를 직접 읽는 용도.
 // 프로덕션 동작에는 관여하지 않는다. scene/THREE/rooms는 tools/render-check/

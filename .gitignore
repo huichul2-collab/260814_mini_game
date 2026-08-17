@@ -18,3 +18,5 @@ _assets_source/
 !tools/render-check/m4-bedB.png
 # 모바일 현황 점검 스크린샷(mobile-check.mjs)도 같은 이유로 예외.
 !tools/render-check/m9-mobile-*.png
+# M9-A 대화창 표시 확인 스크린샷(interaction-check.mjs)도 같은 이유로 예외.
+!tools/render-check/m9-dialogue.png

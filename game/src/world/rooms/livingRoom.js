@@ -3,6 +3,7 @@ import { makeMesh } from '../../render/meshFactory.js';
 import { toonMat } from '../../render/materials.js';
 import { onFrame } from '../../core/loop.js';
 import { createSfxPool } from '../../audio/audio.js';
+import { TAG } from '../../core/tags.js';
 
 /* ------------------------------------------------------------------ *
  *  거실 소품 전용 파일 (M4). 바닥·벽·문은 house.js(layout.js 데이터
@@ -17,11 +18,12 @@ export function createLivingRoom(scene, camera, renderer) {
   scene.add(room);
 
   // 러그 (아기자기 포인트 1) — 방이 커진 만큼 확대
-  makeMesh(new THREE.CylinderGeometry(1.1, 1.1, 0.02, 24), 0xd1553f, room, [0.2, 0.02, 0.9]);
+  makeMesh(new THREE.CylinderGeometry(1.1, 1.1, 0.02, 24), 0xd1553f, room, [0.2, 0.02, 0.9], {}, { interactive: 'living.rug' });
 
   // ---------- 오브젝트: 책상 ----------
   const desk = new THREE.Group();
   desk.position.set(0.4, 0, -2.55);
+  desk.userData[TAG.INTERACTIVE] = 'living.desk'; // Group 태깅 — 상판/다리 어디를 클릭해도 책상 전체가 반응
   room.add(desk);
 
   // 책상 상판만 solid로 태깅 — 다리 사이 틈은 무시하고 상판 XZ 풋프린트를
@@ -40,6 +42,7 @@ export function createLivingRoom(scene, camera, renderer) {
   // 의자 (아기자기 포인트 2)
   const chair = new THREE.Group();
   chair.position.set(0.4, 0, -1.75);
+  chair.userData[TAG.INTERACTIVE] = 'living.chair';
   room.add(chair);
   makeMesh(new THREE.BoxGeometry(0.42, 0.05, 0.42), 0xd1553f, chair, [0, 0.42, 0], {}, { solid: true });
   makeMesh(new THREE.BoxGeometry(0.42, 0.42, 0.05), 0xd1553f, chair, [0, 0.63, 0.19]);
@@ -55,6 +58,7 @@ export function createLivingRoom(scene, camera, renderer) {
   // ---------- 아이템 증식: 책장 ----------
   const bookshelf = new THREE.Group();
   bookshelf.position.set(-2.75, 0, 1.8);
+  bookshelf.userData[TAG.INTERACTIVE] = 'living.bookshelf';
   room.add(bookshelf);
 
   makeMesh(new THREE.BoxGeometry(0.28, 1.3, 0.05), 0x7a4a2a, bookshelf, [0, 0.65, -0.375]);
@@ -78,6 +82,7 @@ export function createLivingRoom(scene, camera, renderer) {
   // ---------- 아이템 증식: 화분 ----------
   const plant = new THREE.Group();
   plant.position.set(-2.75, 0, 1.15);
+  plant.userData[TAG.INTERACTIVE] = 'living.plant';
   room.add(plant);
   makeMesh(new THREE.CylinderGeometry(0.14, 0.11, 0.22, 12), 0xc9683f, plant, [0, 0.11, 0], {}, { solid: true });
   makeMesh(new THREE.IcosahedronGeometry(0.22, 0), 0x5f9e52, plant, [0, 0.42, 0]);
@@ -86,6 +91,7 @@ export function createLivingRoom(scene, camera, renderer) {
   // ---------- 아이템 증식: 벽 액자 (뒷벽 안쪽면에 밀착) ----------
   const frame = new THREE.Group();
   frame.position.set(1.0, 1.55, -2.88);
+  frame.userData[TAG.INTERACTIVE] = 'living.frame';
   room.add(frame);
   makeMesh(new THREE.BoxGeometry(0.5, 0.38, 0.03), 0x5a3826, frame, [0, 0, 0]);
   makeMesh(new THREE.BoxGeometry(0.4, 0.28, 0.01), 0x9db8ff, frame, [0, 0, 0.02]);
@@ -94,7 +100,7 @@ export function createLivingRoom(scene, camera, renderer) {
   makeMesh(new THREE.CylinderGeometry(0.045, 0.04, 0.07, 12), 0xe0793f, desk, [-0.25, 0.79, 0.1]);
 
   // ---------- 아이템 증식: 방석 ----------
-  makeMesh(new THREE.CylinderGeometry(0.22, 0.24, 0.08, 16), 0x5a8fd1, room, [0.9, 0.04, 1.5]);
+  makeMesh(new THREE.CylinderGeometry(0.22, 0.24, 0.08, 16), 0x5a8fd1, room, [0.9, 0.04, 1.5], {}, { interactive: 'living.cushion' });
 
   // ---------- 상호작용 오브젝트: 스탠드 조명 ----------
   // ⚠️ desk.add(lamp)라서 lamp.position은 desk 로컬 좌표다. M4에서 책상을
@@ -104,6 +110,10 @@ export function createLivingRoom(scene, camera, renderer) {
   // 두께 0.06의 절반) — 램프는 상판 위 오른쪽(x=0.35, 상판 절반폭 0.5 안쪽)에 앉는다.
   const lamp = new THREE.Group();
   lamp.position.set(0.35, 0.75, 0);
+  // ⚠️ desk에도 living.desk 태그가 있다 — lamp가 desk의 자식이라 lamp
+  // 자체 메시를 클릭하면 probe.js가 조상을 거슬러 올라가다 lamp에서
+  // 먼저 태그를 찾아 멈추므로(자기 자신부터 검사) desk와 안 섞인다.
+  lamp.userData[TAG.INTERACTIVE] = 'living.lamp';
   desk.add(lamp);
 
   makeMesh(new THREE.CylinderGeometry(0.08, 0.09, 0.02, 12), 0x2e2a3a, lamp, [0, 0.01, 0]);
