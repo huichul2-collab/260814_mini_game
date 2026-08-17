@@ -41,7 +41,7 @@ export function createBedB(scene) {
 
   // 3. 서랍장 / 서랍 체스트 (남쪽 벽 안쪽 밀착: Z_center = 6.65, X = -1.1)
   const dresser = new THREE.Group();
-  dresser.position.set(0.8, 0, 6.65);
+  dresser.position.set(1.25, 0, 6.65);
   room.add(dresser);
 
   makeMesh(new THREE.BoxGeometry(0.95, 0.85, 0.45), 0x8a5a3c, dresser, [0, 0.425, 0], {}, { solid: true });
