@@ -53,6 +53,8 @@ initController(player, followCam.getYaw);
 window.__debug = {
   player,
   camera,
+  renderer,
+  followCam,
   getColliders,
   scene,
   THREE,
