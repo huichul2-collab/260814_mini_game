@@ -3,6 +3,11 @@
 // 실제로 끝까지 도는지 자동 주행한다(docs/spec/M9-escape.md §9, §10.6).
 // ⚠️ 불변 규칙 9: 이 스크립트는 "진행 가능 여부" 판정 하나만 맡는다.
 // 스크린샷은 안 찍는다 — 그건 visual-shot.mjs 책임이다.
+// ⚠️ window.__debug.unlockAllDoors()를 여기서 쓰지 마라. m4-rooms.mjs /
+// stuck-diagnose.mjs는 "기하학적으로 지나갈 수 있는가"만 재려고 그 훅으로
+// 잠금을 우회하지만, 이 스크립트는 반대다 — 잠긴 상태 자체와 그걸 실제로
+// 푸는 과정이 검증 대상이다. 여기서 우회하면 이 스크립트가 존재하는
+// 이유가 없어진다.
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';

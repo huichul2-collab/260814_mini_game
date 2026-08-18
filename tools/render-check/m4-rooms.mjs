@@ -66,6 +66,12 @@ await sleep(500);
 const loadingStillThere = await page.evaluate(() => !!document.getElementById('loading'));
 console.log('[m4-rooms] loading element still in DOM:', loadingStillThere);
 
+// M9-B로 D2가 잠기면서 study 관련 구간이 걸어서는 통과 불가능해졌다.
+// 이 스크립트가 묻는 건 "기하학적으로 지나갈 수 있는가"이지 "퍼즐을
+// 풀었는가"가 아니다(그건 escape-flow.mjs 몫, 불변 규칙 9) — 그래서
+// 주행 시작 전에 검증 전용 훅으로 문을 전부 열어 잠금과 분리한다.
+await page.evaluate(() => window.__debug.unlockAllDoors());
+
 function getPos() {
   return page.evaluate(() => {
     if (!window.__debug || !window.__debug.player || !window.__debug.player.root || !window.__debug.player.root.position) return null;

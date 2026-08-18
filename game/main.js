@@ -21,6 +21,7 @@ import { initFootsteps } from './src/audio/footsteps.js';
 import { loadAudioBuffer } from './src/assets/loaders.js';
 import { initProbe } from './src/interaction/probe.js';
 import { initInventory } from './src/ui/inventory.js';
+import { unlockDoor } from './src/story/state.js';
 
 /* ------------------------------------------------------------------ *
  *  부트스트랩 전용 파일 (로드맵 §3 "main.js는 통합자 전용").
@@ -66,6 +67,22 @@ window.__debug = {
   THREE,
   rooms: { living: livingRoom.room, bedA: bedA.room, study: study.room, bedB: bedB.room },
   doorLocks, // M9-B: escape-flow.mjs가 잠금 패널 상태를 직접 조회할 때 씀
+  // 검증 전용 훅 — 프로덕션 동작에는 관여하지 않는다. m4-rooms.mjs /
+  // stuck-diagnose.mjs가 "기하학적으로 지나갈 수 있는가"만 재려면 퍼즐과
+  // 무관하게 문을 전부 열어야 한다(escape-flow.mjs는 잠긴 상태 자체가
+  // 검증 대상이라 이 훅을 쓰지 않는다). 해제 절차는 doorLock.js의 실제
+  // 해제 경로(probe.js onSuccess)와 동일해야 한다 — panel.visible=false만으론
+  // 콜라이더가 안 사라지므로 userData.solid도 지우고 rebuildFrom을 마지막에
+  // 한 번만 부른다.
+  unlockAllDoors: () => {
+    for (const doorId of Object.keys(doorLocks)) {
+      const lock = doorLocks[doorId];
+      const unlockPanel = lock.group.userData._unlockPanel;
+      if (unlockPanel) unlockPanel();
+      unlockDoor(doorId);
+    }
+    rebuildFrom(scene);
+  },
 };
 
 // ---------- 오디오 게이트 (브라우저 오토플레이 정책상 사용자 제스처 필요) ----------

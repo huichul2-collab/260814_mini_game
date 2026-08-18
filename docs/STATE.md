@@ -2,7 +2,7 @@
 
 > 60줄 유지. 서술 금지, 상태만. 세션 끝에 **Claude Code CLI / Antigravity가 갱신**한다.
 > 배경/경위가 필요하면 `handoff-2026-08-15.md`, 전체 로그는 `dev-log.md`.
-> 최종 갱신: 2026-08-18 — 데이터 기반 가구 리팩터링 merge(씬그래프 diff로 검증, `scene-dump.mjs`), exterior.js 나무 시드 고정(`WORLD_SEED`). 레인 브랜치 전부 merge 완료 후 origin에서 삭제 — 현재 원격은 `main`뿐
+> 최종 갱신: 2026-08-19 — M9-B 완료(문 잠금 D2 + 퍼즐 P1, `escape-flow.mjs` 8/8). 주행 검증(`m4-rooms.mjs`/`stuck-diagnose.mjs`)은 `window.__debug.unlockAllDoors()`로 잠금과 분리해 13/13 복구
 
 ## 3층 운영규칙
 
@@ -37,17 +37,18 @@
 | M5 배포 (itch.io) | 🟡 **배포 도구까지 준비됨** — `docs/deploy.md`+`tools/make-dist.mjs` |
 | M6 증식 (오디오 시스템 ✅ 실제 에셋까지 완료 / 소품) | 🟡 |
 | M9-A 방탈출 기반(사물 클릭→설명, `story.js`+`probe.js`+`dialogue.js`) | ✅ 완료 — `interaction-check.mjs` 6/6 통과 |
-| M9-B 문잠금 패널 + 퍼즐 1개(P1, 시계→0825→서재) | 🔴 다음 작업 — `docs/spec/M9-escape.md` §8 |
-| M9-C 나머지 퍼즐(P2~P5)+아이템+엔딩 | 🔴 |
+| M9-B 문잠금 패널 + 퍼즐 1개(P1, 시계→0825→서재) | ✅ 완료 — `escape-flow.mjs` 8/8, `m4-rooms.mjs`/`stuck-diagnose.mjs` 13/13(잠금 우회 훅으로 분리) |
+| M9-C 나머지 퍼즐(P2~P5)+아이템+엔딩 | 🔴 다음 작업 — `docs/spec/M9-escape.md` §8, D1/D3/D4를 `LOCKS`에 추가 |
 | M9-D 오프닝 페이드인+대사+사운드 | 🔴 |
 | M7 폴리시 | 🔴 |
 
 ## 지금 열려 있는 작업 (우선순위)
 
-1. **M5 배포 판단** — 사용자 몫, 도구까지 준비됨(`docs/deploy.md`)
-2. 벽 페이드 (`TAG.FADEABLE` 실제 투명도) — 2층, 문/창문 있는 벽 구조가 정립됨
-3. 카메라: `maxDistance` 8.0 이상 휠 줌아웃 시 일부 방 아티팩트 피치 튜닝
-4. 모바일: 가상 조이스틱은 스트레치 목표라 미구현
+1. **M9-C** — D1/D3/D4를 `LOCKS`에 추가 + 나머지 퍼즐(P2~P5)+아이템+엔딩
+2. **M5 배포 판단** — 사용자 몫, 도구까지 준비됨(`docs/deploy.md`)
+3. 벽 페이드 (`TAG.FADEABLE` 실제 투명도) — 2층, 문/창문 있는 벽 구조가 정립됨
+4. 카메라: `maxDistance` 8.0 이상 휠 줌아웃 시 일부 방 아티팩트 피치 튜닝
+5. 모바일: 가상 조이스틱은 스트레치 목표라 미구현
 
 ## 열린 결정 / 미확정
 

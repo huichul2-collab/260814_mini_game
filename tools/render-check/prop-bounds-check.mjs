@@ -295,18 +295,21 @@ console.log('');
 console.log('로그:', logs.length ? logs : '없음');
 console.log('');
 
-// M9-B(2026-08-18): 24 → 27. 거실 시계(living.clock) 1개 추가 + 시계
-// 내부의 바늘 피벗 그룹 2개(hourHand/minuteHand)가 이 스크립트의 기존
-// "중첩 Group도 각자 하나로 센다" 규칙에 걸려 별도 항목으로 잡힌다
-// (handsGroup 자체는 자기 지오메트리가 없어 빈 박스로 걸러짐 — 그래서
-// +4가 아니라 +3). 문 잠금 패널(lock_D2)은 roomsMap 그룹 밖(scene에 직접
-// 추가)이라 이 스크립트 집계에 안 잡힌다.
-const EXPECTED_PROPS = 27;
-if (results.length !== EXPECTED_PROPS) {
-  console.error(`FAIL: 소품 총 개수 오차 — 기대값 ${EXPECTED_PROPS}개, 실제 ${results.length}개`);
+// M9-B(2026-08-19): 이 숫자는 "소품 개수"가 아니다. 이 스크립트는 중첩된
+// THREE.Group도 자기 지오메트리 박스가 비어있지 않으면 각각 별도 항목으로
+// 센다(위 순회 로직 참고) — 그래서 실제 소품은 25개(거실 시계 1개 포함)
+// 인데, 시계 내부의 바늘 피벗 그룹 2개(hourHand/minuteHand)가 그 규칙에
+// 걸려 따로 잡히는 바람에 총 27개가 된다(handsGroup 자체는 자기
+// 지오메트리가 없어 빈 박스로 걸러짐 — 그래서 +4가 아니라 +3). 문 잠금
+// 패널(lock_D2)은 roomsMap 그룹 밖(scene에 직접 추가)이라 이 집계에 안
+// 잡힌다. 나중에 헷갈리지 않도록 변수명을 "소품"이 아니라 "노드" 기준으로
+// 둔다 — 25가 아니라 27인 이유를 다시 찾을 필요 없게.
+const EXPECTED_PROP_NODES = 27;
+if (results.length !== EXPECTED_PROP_NODES) {
+  console.error(`FAIL: 소품/하위노드 총 개수 오차 — 기대값 ${EXPECTED_PROP_NODES}개, 실제 ${results.length}개`);
   process.exit(1);
 }
 
-console.log(`OK   소품 총 개수 ${results.length}개 정확히 일치`);
+console.log(`OK   소품/하위노드 총 개수 ${results.length}개 정확히 일치(실제 소품은 25개 — 시계의 바늘 피벗 2개가 별도 집계됨)`);
 console.log(warnings === 0 ? '경고 없음' : `경고 ${warnings}건 — 최종 판단은 사람이 할 것`);
 process.exit(0);

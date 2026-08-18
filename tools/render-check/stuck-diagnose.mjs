@@ -63,6 +63,11 @@ await page.waitForFunction(() => {
 await page.evaluate(() => document.getElementById('audio-start-btn').click());
 await sleep(1500);
 
+// M9-B로 D2가 잠기면서 study 관련 구간이 걸어서는 통과 불가능해졌다.
+// 이 스크립트가 재는 건 "기하학적으로 지나갈 수 있는가"이지 퍼즐 여부가
+// 아니다 — 검증 전용 훅으로 문을 전부 열어 잠금과 분리한다.
+await page.evaluate(() => window.__debug.unlockAllDoors());
+
 // ---------- 페이지 컨텍스트 헬퍼 ----------
 // 매 requestAnimationFrame마다 위치를 읽어 "3프레임 연속 완전 동일"을
 // 멈춤으로 판정한다(폴링 간격에 좌우되지 않는 진짜 프레임 단위 검사).
@@ -258,12 +263,11 @@ const legs = [
 // 못 알아챈다 — 여기 있는 이름만 실패해도 exit 0(+"알려진 예외 N건"),
 // 목록에 없는 실패가 하나라도 있으면 exit 1.
 //
-// M9-B로 D2가 잠기면서 서재로 직행하는 두 구간이 "정상적으로" 막힌다 —
-// 진단 결과 콜라이더 1개(lock_D2)의 정면 충돌이지 옛날의 코너 상쇄 패턴이
-// 아니다(§정지 지점 진단 참고). 퍼즐을 풀지 않고 걸어서만 통과하려는
-// 이 스크립트 특성상 M9-C까지(D1/D3/D4도 잠기기 전까지) 계속 여기 남는다
-// — 잠금이 실제로 몇 개인지는 story.js LOCKS를 보면 된다.
-const KNOWN_FAILURES = ['study', 'D2 가장자리 → study'];
+// M9-B에서 D2가 잠기면서 한때 study 관련 2개 구간이 여기 있었다 — 이제는
+// 주행 시작 전에 window.__debug.unlockAllDoors()로 문을 전부 열어 잠금과
+// 분리했으므로(위 참고) 순수 기하 문제만 남아야 한다. 빈 배열로 둔다 —
+// 여기 뭔가 다시 채워진다면 그건 진짜 회귀다.
+const KNOWN_FAILURES = [];
 
 let stuckReport = null;
 let failCount = 0;
