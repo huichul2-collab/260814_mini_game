@@ -5,6 +5,15 @@ Thumbs.db
 .claude/
 dist/
 tools/render-check/*.png
+# 원격접속·자격증명 파일 (실수 유입 차단)
+*.ica
+*.rdp
+*.pem
+*.key
+*.p12
+*.pfx
+.env
+.env.*
 # AI 생성 BGM 원본(재인코딩 전 4.2MB) — 배포 페이로드에는 필요 없음.
 # game/ 밖(_assets_source/)으로 옮겨서 game/ 통째 압축 시 안 딸려오게 함
 # (game/assets/audio/에 남아있으면 .gitignore는 git에만 적용되고 zip에는 그대로

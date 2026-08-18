@@ -237,6 +237,34 @@ function checkGLBFile(file) {
 }
 
 // ---------------------------------------------------------------------------
+// assets/ 안에 허용 확장자 외 파일 — 엉뚱한 파일이 섞여 들어오는 걸 잡는다.
+// (Citrix .ica 원격접속 설정 파일이 game/assets/audio/에 섞여 들어온 사고
+// 이후 추가 — .gitignore로 커밋은 막지만, 그전에 애초에 왜 이 폴더에
+// 있는지를 사람이 알아채도록 여기서도 경고한다.)
+// ---------------------------------------------------------------------------
+const ALLOWED_ASSET_EXTS = new Set(['.mp3', '.ogg', '.glb', '.png', '.jpg']);
+
+function walkFiles(dir) {
+  const out = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...walkFiles(full));
+    else if (entry.isFile()) out.push(full);
+  }
+  return out;
+}
+
+function checkForeignFiles(assetsDir) {
+  if (!fs.existsSync(assetsDir)) return;
+  const files = walkFiles(assetsDir);
+  const foreign = files.filter((f) => !ALLOWED_ASSET_EXTS.has(path.extname(f).toLowerCase()));
+  for (const f of foreign) {
+    warn(`${path.relative(repoRoot, f)}: 허용 확장자(${[...ALLOWED_ASSET_EXTS].join(' ')}) 외 파일 — assets/에 있을 이유가 있는지 확인할 것`);
+  }
+  if (foreign.length === 0) ok(`assets/ 안 파일 ${files.length}개 전부 허용 확장자`);
+}
+
+// ---------------------------------------------------------------------------
 // ATTRIBUTION.md ↔ assets/ 1:1 대응
 // ---------------------------------------------------------------------------
 function checkAttribution(assetFiles) {
@@ -306,6 +334,10 @@ for (const f of audioFiles) checkAudioFile(f);
 console.log('');
 console.log('--- GLB ---');
 for (const f of glbFiles) checkGLBFile(f);
+
+console.log('');
+console.log('--- assets/ 허용 확장자 검사 ---');
+checkForeignFiles(path.join(gameDir, 'assets'));
 
 console.log('');
 console.log('--- ATTRIBUTION.md 대응 ---');
