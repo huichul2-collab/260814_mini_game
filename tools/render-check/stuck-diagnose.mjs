@@ -243,19 +243,24 @@ async function diagnoseAt(pos, axisAtFreeze, yaw) {
 // 경로만 테스트한다" 원칙에 따라 m4-rooms.mjs와 똑같은 경유점을 쓴다.
 const VIA_D1_TO_LIVING = [{ x: -0.5, z: -3.3 }, { x: -0.5, z: -2.0 }];
 
+// M9-C 배치1: 공방(bedA) 방 중앙(-0.5,-5.0)에 작업대, 보관소(bedB) 방
+// 한가운데(0,5.2)에 기계장치가 §11.2대로 정확히 들어앉으면서 옛 목표점
+// 두 개가 가구 안이 됐다(m4-rooms.mjs와 동일 사유 — 그쪽 주석 참고).
+// 같은 이유로 "D3 가장자리 → bedB"도 목표를 기계장치 앞이 아니라 문
+// 바로 안쪽으로 당겼다(원래 목적인 "가장자리 통과" 자체는 그대로 검증됨).
 const legs = [
   { name: 'living(spawn)', target: { x: 0, z: 0 } },
-  { name: 'bedA', target: { x: -0.5, z: -5.0 } },
+  { name: 'bedA', target: { x: -2.0, z: -5.0 }, via: [{ x: -0.9, z: -3.6 }] },
   { name: 'bedA→living', target: { x: 0, z: 0 }, via: VIA_D1_TO_LIVING },
   { name: 'study', target: { x: 5.0, z: 0.5 } },
   { name: 'study→living', target: { x: 0, z: 0 } },
-  { name: 'bedB', target: { x: 0.0, z: 5.0 } },
+  { name: 'bedB', target: { x: -1.5, z: 5.0 }, via: [{ x: 0, z: 3.6 }] },
   { name: 'bedB→living', target: { x: 0, z: 0 } },
   { name: 'D1 가장자리 → bedA', target: { x: -0.9, z: -3.6 } },
   { name: 'D1 가장자리 → living', target: { x: 0, z: 0 }, via: VIA_D1_TO_LIVING },
   { name: 'D2 가장자리 → study', target: { x: 5.0, z: 0.1 } },
   { name: 'D2 가장자리 → living', target: { x: 0, z: 0 } },
-  { name: 'D3 가장자리 → bedB', target: { x: -0.4, z: 5.0 } },
+  { name: 'D3 가장자리 → bedB', target: { x: -0.4, z: 3.6 } },
   { name: 'D3 가장자리 → living', target: { x: 0, z: 0 } },
 ];
 

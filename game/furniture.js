@@ -6,11 +6,10 @@
  *    - id    : 상호작용 ID (story.js OBJECTS 키와 1:1 대응, 없는 소품은 null)
  *    - room  : 가구가 위치할 방 ID ('living', 'bedA', 'study', 'bedB')
  *    - type  : 가구 조형 함수 타입 ('desk', 'chair', 'bookshelf', 'plant',
- *              'frame', 'rug', 'lamp', 'cushion', 'doubleBed', 'nightstand',
- *              'wardrobe', 'circleRug', 'pictureFrame', 'studyDesk',
- *              'officeChair', 'largeBookshelf', 'armchair', 'teaTable',
- *              'rectRug', 'singleBed', 'smallNightstand', 'dresser',
- *              'largePlant', 'squareRug')
+ *              'frame', 'rug', 'lamp', 'cushion', 'clock', 'assembler',
+ *              'studyDesk', 'officeChair', 'largeBookshelf', 'armchair',
+ *              'teaTable', 'rectRug', 'diary', 'keyPiece', 'workbench',
+ *              'blankPaper', 'acrylicPanel', 'machine')
  *    - pos   : 월드 좌표 [X, Y, Z] (단위: 미터)
  *    - rotY  : Y축 수평 회전각 (단위: 라디안, 기본값: 0)
  * ------------------------------------------------------------------ */
@@ -25,14 +24,14 @@ export const FURNITURE = [
   { id: 'living.plant', room: 'living', type: 'plant', pos: [-2.75, 0, 1.15], rotY: 0 },
   { id: 'living.frame', room: 'living', type: 'frame', pos: [1.0, 1.55, -2.88], rotY: 0 },
   { id: 'living.cushion', room: 'living', type: 'cushion', pos: [0.9, 0.04, 1.5], rotY: 0 },
-  { id: 'living.clock', room: 'living', type: 'clock', pos: [-2.90, 1.60, -2.00], rotY: Math.PI / 2 }, // 임시 좌표(§10.4) — 배치맵 오면 교체
+  { id: 'living.clock', room: 'living', type: 'clock', pos: [2.90, 1.60, -1.10], rotY: -Math.PI / 2 }, // §11.2 — 서벽 → 동벽 북쪽 구간
+  { id: 'living.assembler', room: 'living', type: 'assembler', pos: [1.40, 0, 2.60], rotY: Math.PI }, // §11.2 — 남벽 D3 동쪽 잔여
 
-  // ---------- 침실 A (bedA) ----------
-  { id: null, room: 'bedA', type: 'doubleBed', pos: [-1.3, 0, -5.84], rotY: 0 },
-  { id: null, room: 'bedA', type: 'nightstand', pos: [-0.3, 0, -6.6], rotY: 0 },
-  { id: null, room: 'bedA', type: 'wardrobe', pos: [1.5, 0, -5.0], rotY: 0 },
-  { id: null, room: 'bedA', type: 'circleRug', pos: [-0.5, 0.01, -4.5], rotY: 0 },
-  { id: null, room: 'bedA', type: 'pictureFrame', pos: [0.8, 1.5, -6.92], rotY: 0 },
+  // ---------- 침실 A (bedA) → 공방 ----------
+  { id: 'bedA.workbench', room: 'bedA', type: 'workbench', pos: [-0.50, 0, -5.00], rotY: 0 }, // §11.2 — 방 중앙
+  { id: 'bedA.blankPaper', room: 'bedA', type: 'blankPaper', pos: [0.60, 1.40, -6.90], rotY: 0 }, // §11.2 — 북벽, 창문 W1 오른쪽
+  { id: 'bedA.acrylicPanel', room: 'bedA', type: 'acrylicPanel', pos: [1.60, 1.40, -6.90], rotY: 0 }, // §11.2 — 백지 옆
+  { id: 'bedA.keyPiece2', room: 'bedA', type: 'keyPiece', pos: [-0.50, 0.80, -5.00], rotY: 0 }, // §11.2 — 작업대 위
 
   // ---------- 작업실 (study) ----------
   { id: null, room: 'study', type: 'studyDesk', pos: [5.5, 0, -1.55], rotY: 0 },
@@ -41,11 +40,9 @@ export const FURNITURE = [
   { id: null, room: 'study', type: 'armchair', pos: [4.2, 0, 2.45], rotY: 0 },
   { id: null, room: 'study', type: 'teaTable', pos: [5.15, 0.225, 2.45], rotY: 0 },
   { id: null, room: 'study', type: 'rectRug', pos: [5.2, 0.01, 0.3], rotY: 0 },
+  { id: 'study.diary', room: 'study', type: 'diary', pos: [5.35, 0.78, -1.50], rotY: 0 }, // §11.2 — studyDesk 상판 위
+  { id: 'study.keyPiece1', room: 'study', type: 'keyPiece', pos: [6.60, 1.05, 0.80], rotY: 0 }, // §11.2 — largeBookshelf 선반 위
 
-  // ---------- 침실 B (bedB) ----------
-  { id: null, room: 'bedB', type: 'singleBed', pos: [1.35, 0, 5.2], rotY: 0 },
-  { id: null, room: 'bedB', type: 'smallNightstand', pos: [1.35, 0, 3.9], rotY: 0 },
-  { id: null, room: 'bedB', type: 'dresser', pos: [1.25, 0, 6.65], rotY: 0 },
-  { id: null, room: 'bedB', type: 'largePlant', pos: [-1.55, 0, 4.3], rotY: 0 },
-  { id: null, room: 'bedB', type: 'squareRug', pos: [-0.1, 0.01, 5.2], rotY: 0 },
+  // ---------- 침실 B (bedB) → 보관소 ----------
+  { id: 'bedB.machine', room: 'bedB', type: 'machine', pos: [0, 0, 5.20], rotY: 0 }, // §11.2 — 방 한가운데. keyPiece3는 machine 조형의 자식
 ];

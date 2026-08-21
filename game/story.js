@@ -31,6 +31,18 @@ export const OBJECTS = {
     name: '멈춘 시계',
     text: `${CLOCK_TIME.hour}시 ${pad2(CLOCK_TIME.minute)}분을 가리킨 채 멈춰 있다.`,
   },
+  'living.assembler': { name: '조립 머신', text: '홈이 세 개 뚫려 있다. 뭔가를 끼워야 할 것 같다.' },
+
+  'study.diary': { name: '일기장', text: '펼쳐진 채로 놓여 있다. 손글씨가 빼곡하다.' },
+  'study.keyPiece1': { name: '열쇠 조각', text: '금속으로 된 조각. 무언가의 일부처럼 보인다.' },
+
+  'bedA.workbench': { name: '작업대', text: '공구 자국이 가득한 낡은 작업대.' },
+  'bedA.blankPaper': { name: '백지', text: '아무것도 적혀 있지 않은 종이다.' },
+  'bedA.acrylicPanel': { name: '아크릴판', text: '구멍이 뚫린 투명한 판. 뭔가를 겹쳐 보라는 뜻 같다.' },
+  'bedA.keyPiece2': { name: '열쇠 조각', text: '작업대 위에 놓인 금속 조각.' },
+
+  'bedB.machine': { name: '기계 장치', text: '가운데 홈이 비어 있다. 톱니바퀴가 필요해 보인다.' },
+  'bedB.keyPiece3': { name: '열쇠 조각', text: '서랍 안에 있던 마지막 조각.' },
 };
 
 // M9-B: 잠긴 문. 이 배치에서는 D2 하나뿐이다 — D1/D3/D4는 M9-C에서 데이터

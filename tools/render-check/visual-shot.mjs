@@ -67,11 +67,15 @@ await sleep(1500);
 
 // 방 중앙 좌표 — m4-rooms.mjs가 걸어서 도달을 검증하는 것과 같은 지점
 // (docs/spec/M4-layout.md §2). 여긴 그 좌표로 순간이동만 한다.
+// M9-C 배치1: bedA/bedB는 §11.2로 방 중앙에 새 소품(작업대/기계장치)이
+// 들어앉으면서 옛 중앙 좌표가 그 소품 내부가 됐다 — 텔레포트라 충돌은
+// 안 나지만 캐릭터가 소품에 파묻힌 채로 찍히므로, m4-rooms.mjs가 걷기
+// 테스트용으로 옮긴 것과 같은 좌표를 그대로 쓴다(그쪽 주석 참고).
 const ROOMS = [
   { id: 'living', x: 0, z: 0 },
-  { id: 'bedA', x: -0.5, z: -5.0 },
+  { id: 'bedA', x: -2.0, z: -5.0 },
   { id: 'study', x: 5.0, z: 0.5 },
-  { id: 'bedB', x: 0.0, z: 5.0 },
+  { id: 'bedB', x: -1.5, z: 5.0 },
 ];
 
 async function shootRoom(room) {

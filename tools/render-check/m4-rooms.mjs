@@ -156,11 +156,20 @@ const VIA_D1_TO_LIVING = [{ x: -0.5, z: -3.3 }, { x: -0.5, z: -2.0 }];
 console.log('--- 방 중앙 도달 ---');
 await sleep(2000);
 await leg('living(spawn 확인)', { x: 0, z: 0 });
-await leg('bedA', { x: -0.5, z: -5.0 });
+// M9-C 배치1: 공방(bedA) 방 중앙(-0.5,-5.0)에 작업대(workbench)가 §11.2대로
+// 정확히 들어앉으면서 옛 목표점이 이제 가구 안이 됐다 — 가구를 피해 방
+// 서쪽 빈 공간으로 목표를 옮긴다. D1 문 근처(-0.9,-3.6)는 이미 검증된
+// 진입 경로라 그 지점을 경유해서 간다(실측으로 작업대를 건드리지 않고
+// 통과되는 것 확인).
+await leg('bedA', { x: -2.0, z: -5.0 }, { via: [{ x: -0.9, z: -3.6 }] });
 await leg('bedA→living', { x: 0, z: 0 }, { via: VIA_D1_TO_LIVING });
 await leg('study', { x: 5.0, z: 0.5 });
 await leg('study→living', { x: 0, z: 0 });
-await leg('bedB', { x: 0.0, z: 5.0 });
+// M9-C 배치1: 보관소(bedB) 방 한가운데(0,5.2)에 기계장치(machine)가
+// §11.2대로 들어앉으면서 옛 목표점이 가구 안이 됐다 — 방 서쪽으로 옮긴다.
+// (0,0)에서 목표로 바로 대각선으로 가면 D3 개구부(X[-0.65,0.65]) 바깥의
+// 벽에 먼저 걸린다 — 문 중앙을 먼저 지나는 경유점을 거쳐 간다.
+await leg('bedB', { x: -1.5, z: 5.0 }, { via: [{ x: 0, z: 3.6 }] });
 await leg('bedB→living', { x: 0, z: 0 });
 
 console.log('--- 문 가장자리 통과(0.25m 안쪽) ---');
@@ -168,7 +177,11 @@ await leg('D1 가장자리 → bedA', { x: -0.9, z: -3.6 });
 await leg('D1 가장자리 → living', { x: 0, z: 0 }, { via: VIA_D1_TO_LIVING });
 await leg('D2 가장자리 → study', { x: 5.0, z: 0.1 });
 await leg('D2 가장자리 → living', { x: 0, z: 0 });
-await leg('D3 가장자리 → bedB', { x: -0.4, z: 5.0 });
+// M9-C 배치1: 목표(-0.4,5.0)가 기계장치 콜라이더 코앞이라 이 폴링 기반
+// 테스트에서는 우연히 tol(0.3m) 안쪽에서 멈춰 통과했지만, 실제로는 거의
+// 붙어서 막히는 상태라 불안정하다 — 문 바로 안쪽(z=3.6)으로 당긴다
+// (stuck-diagnose.mjs 프레임 단위 테스트에서 여기서 실제 STUCK 재현됨).
+await leg('D3 가장자리 → bedB', { x: -0.4, z: 3.6 });
 await leg('D3 가장자리 → living', { x: 0, z: 0 });
 
 await browser.close();

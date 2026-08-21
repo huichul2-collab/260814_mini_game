@@ -249,7 +249,10 @@ check(
 
 // ---------- 4. 시계 조사 → 대사에 시각 정보 ----------
 console.log('\n--- 4. 시계 조사 ---');
-const clockClick = await placeAndClick('living.clock', 1.0, 0);
+// M9-C 배치1: §11.2로 시계가 서벽(-2.90)에서 동벽(2.90)으로 옮겨갔다 —
+// 방 안쪽(서쪽)에서 접근해야 하므로 오프셋 부호를 뒤집는다(offsetX=+1.0
+// 이었을 때는 동벽 바깥 X=3.90, 즉 벽 너머로 텔레포트돼 클릭이 실패했다).
+const clockClick = await placeAndClick('living.clock', -1.0, 0);
 if (check('시계 클릭 좌표 계산', clockClick.ok, JSON.stringify(clockClick))) {
   await page.mouse.click(clockClick.sx, clockClick.sy);
   await sleep(200);

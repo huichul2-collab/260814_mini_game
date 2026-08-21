@@ -7,12 +7,15 @@ import { makePlant, makeLargePlant } from './props/plant.js';
 import { makeFrame, makePictureFrame } from './props/frame.js';
 import { makeRug, makeCushion, makeCircleRug, makeRectRug, makeSquareRug } from './props/rug.js';
 import { makeLamp } from './props/lamp.js';
-import { makeDoubleBed, makeSingleBed } from './props/bed.js';
-import { makeNightstand, makeSmallNightstand } from './props/nightstand.js';
-import { makeWardrobe } from './props/wardrobe.js';
-import { makeDresser } from './props/dresser.js';
 import { makeArmchair, makeTeaTable } from './props/seating.js';
 import { makeClock } from './props/clock.js';
+import { makeWorkbench } from './props/workbench.js';
+import { makeBlankPaper } from './props/blankPaper.js';
+import { makeAcrylicPanel } from './props/acrylicPanel.js';
+import { makeMachine } from './props/machine.js';
+import { makeDiary } from './props/diary.js';
+import { makeAssembler } from './props/assembler.js';
+import { makeKeyPiece } from './props/keyPiece.js';
 
 const PROP_BUILDERS = {
   desk: (item) => makeDesk(item.id),
@@ -31,15 +34,16 @@ const PROP_BUILDERS = {
   rectRug: (item) => makeRectRug(item.id),
   squareRug: (item) => makeSquareRug(item.id),
   lamp: (item, camera, renderer) => makeLamp(item.id, camera, renderer),
-  doubleBed: (item) => makeDoubleBed(item.id),
-  singleBed: (item) => makeSingleBed(item.id),
-  nightstand: (item) => makeNightstand(item.id),
-  smallNightstand: (item) => makeSmallNightstand(item.id),
-  wardrobe: (item) => makeWardrobe(item.id),
-  dresser: (item) => makeDresser(item.id),
   armchair: (item) => makeArmchair(item.id),
   teaTable: (item) => makeTeaTable(item.id),
   clock: (item) => makeClock(item.id),
+  workbench: (item) => makeWorkbench(item.id),
+  blankPaper: (item) => makeBlankPaper(item.id),
+  acrylicPanel: (item) => makeAcrylicPanel(item.id),
+  machine: (item) => makeMachine(item.id),
+  diary: (item) => makeDiary(item.id),
+  assembler: (item) => makeAssembler(item.id),
+  keyPiece: (item) => makeKeyPiece(item.id),
 };
 
 export function createFurnitureForRoom(scene, roomName, camera, renderer) {
