@@ -1,8 +1,10 @@
 /* ------------------------------------------------------------------ *
- *  숫자 키패드 팝업 — 2D DOM(Three.js 아님). 자물쇠 입력은 3D 조작이
+ *  자물쇠 입력 팝업 — 2D DOM(Three.js 아님). 자물쇠 입력은 3D 조작이
  *  아니라 화면 위 오버레이로 처리한다(docs/spec/M9-escape.md §6.1, §10.6).
- *  M9-B는 숫자(digits) 자물쇠 하나뿐이라 이 파일도 그것만 만든다 —
- *  방향/영어 자물쇠(P2/P3)는 M9-C에서 별도로 다룬다.
+ *
+ *  type별로 키패드만 다르고, "입력값을 모아서 정답과 비교" 로직은
+ *  전부 공유한다(entered는 항상 문자열, answer도 항상 문자열이라
+ *  digits/arrows/letters 모두 같은 비교식으로 처리된다).
  * ------------------------------------------------------------------ */
 
 let activeOverlay = null;
@@ -16,13 +18,14 @@ function closeActive() {
 
 /**
  * @param {object} opts
+ * @param {'digits'|'arrows'|'letters'} [opts.type] 키패드 종류(기본 digits)
  * @param {string} opts.promptText 자물쇠 안내문(LOCKS[door].lockedText)
  * @param {number} opts.length 자릿수
  * @param {string} opts.answer 정답 문자열
  * @param {string} opts.wrongText 오답 시 안내문
  * @param {() => void} opts.onSuccess 정답 입력 시 콜백(모달은 자동으로 닫힘)
  */
-export function showKeypadModal({ promptText, length, answer, wrongText, onSuccess }) {
+export function showKeypadModal({ type = 'digits', promptText, length, answer, wrongText, onSuccess }) {
   closeActive(); // 동시에 하나만 — 이전 모달이 남아있으면 정리
 
   const overlay = document.createElement('div');
@@ -39,9 +42,12 @@ export function showKeypadModal({ promptText, length, answer, wrongText, onSucce
 
   const box = document.createElement('div');
   box.id = 'modal-box';
+  // letters는 26개 버튼이 들어가야 해서 폭을 더 준다 — 모바일 세로에서도
+  // 버튼 한 칸이 44px 이상이 되게(§5 터치 타깃 기준을 자물쇠 UI에도 적용).
+  const boxWidthPx = type === 'letters' ? 360 : 300;
   Object.assign(box.style, {
     position: 'relative',
-    width: 'min(300px, 88vw)',
+    width: `min(${boxWidthPx}px, 92vw)`,
     padding: '20px',
     boxSizing: 'border-box',
     background: '#2a2230',
@@ -110,18 +116,34 @@ export function showKeypadModal({ promptText, length, answer, wrongText, onSucce
     }
   }
 
+  function press(ch) {
+    if (entered.length >= length) return;
+    feedback.textContent = '';
+    entered += ch;
+    renderDisplay();
+    checkComplete();
+  }
+  function clear() {
+    feedback.textContent = '';
+    entered = '';
+    renderDisplay();
+  }
+  function backspace() {
+    feedback.textContent = '';
+    entered = entered.slice(0, -1);
+    renderDisplay();
+  }
+
   const keypad = document.createElement('div');
   keypad.id = 'modal-keypad';
-  Object.assign(keypad.style, {
-    display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px',
-  });
 
+  // 버튼 하나 — 어떤 type이든 최소 44px 높이는 보장한다(모바일 터치 타깃).
   function addKey(label, handler, id) {
     const btn = document.createElement('button');
     if (id) btn.id = id;
     btn.textContent = label;
     Object.assign(btn.style, {
-      padding: '12px 0', fontSize: '18px',
+      minHeight: '44px', padding: '8px 0', fontSize: '18px',
       border: 'none', borderRadius: '10px',
       background: '#3a3040', color: '#fdf6ec', cursor: 'pointer',
     });
@@ -129,32 +151,38 @@ export function showKeypadModal({ promptText, length, answer, wrongText, onSucce
     keypad.appendChild(btn);
   }
 
-  for (let d = 1; d <= 9; d++) {
-    addKey(String(d), () => {
-      if (entered.length >= length) return;
-      feedback.textContent = '';
-      entered += String(d);
-      renderDisplay();
-      checkComplete();
-    }, `modal-digit-${d}`);
+  if (type === 'arrows') {
+    // 3x3 십자 배열 — 방향 버튼 4개 + 가운데 지우기/백스페이스.
+    Object.assign(keypad.style, { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' });
+    const blank = () => { const d = document.createElement('div'); keypad.appendChild(d); };
+    blank();
+    addKey('↑', () => press('↑'), 'modal-arrow-up');
+    blank();
+    addKey('←', () => press('←'), 'modal-arrow-left');
+    addKey('C', clear, 'modal-clear');
+    addKey('→', () => press('→'), 'modal-arrow-right');
+    blank();
+    addKey('↓', () => press('↓'), 'modal-arrow-down');
+    addKey('⌫', backspace, 'modal-backspace');
+  } else if (type === 'letters') {
+    // A~Z 6열 그리드 + 지우기/백스페이스.
+    Object.assign(keypad.style, { display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '6px' });
+    for (let c = 65; c <= 90; c++) {
+      const letter = String.fromCharCode(c);
+      addKey(letter, () => press(letter), `modal-letter-${letter}`);
+    }
+    addKey('C', clear, 'modal-clear');
+    addKey('⌫', backspace, 'modal-backspace');
+  } else {
+    // digits(기본) — 숫자 0~9 + 지우기/백스페이스.
+    Object.assign(keypad.style, { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' });
+    for (let d = 1; d <= 9; d++) {
+      addKey(String(d), () => press(String(d)), `modal-digit-${d}`);
+    }
+    addKey('C', clear, 'modal-clear');
+    addKey('0', () => press('0'), 'modal-digit-0');
+    addKey('⌫', backspace, 'modal-backspace');
   }
-  addKey('C', () => {
-    feedback.textContent = '';
-    entered = '';
-    renderDisplay();
-  }, 'modal-clear');
-  addKey('0', () => {
-    if (entered.length >= length) return;
-    feedback.textContent = '';
-    entered += '0';
-    renderDisplay();
-    checkComplete();
-  }, 'modal-digit-0');
-  addKey('⌫', () => {
-    feedback.textContent = '';
-    entered = entered.slice(0, -1);
-    renderDisplay();
-  }, 'modal-backspace');
 
   box.appendChild(keypad);
   overlay.appendChild(box);

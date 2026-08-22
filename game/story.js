@@ -54,13 +54,30 @@ export const OBJECTS = {
   'bedB.oldRug': { name: '낡은 러그', text: '빛바랜 러그다.' },
 };
 
-// M9-B: 잠긴 문. 이 배치에서는 D2 하나뿐이다 — D1/D3/D4는 M9-C에서 데이터
-// 한 줄씩 추가한다(코드는 이미 doorId로 일반화돼 있다, world/doorLock.js).
+// M9-C 배치2: 문 4개 전부 잠근다(§10.1 예고대로 M9-B는 D2 하나였다).
+// doorId로 이미 일반화된 world/doorLock.js·ui/modal.js·interaction/probe.js는
+// 코드 수정 없이 이 데이터만으로 동작한다.
 export const LOCKS = {
+  D1: {
+    puzzle: 'P2',
+    lockedText: '화살표 자물쇠가 걸려 있다. 방향을 순서대로 눌러야 한다.',
+    unlockedText: '자물쇠가 풀렸다.',
+  },
   D2: {
     puzzle: 'P1',
     lockedText: '숫자 자물쇠가 걸려 있다. 네 자리다.',
     unlockedText: '자물쇠가 풀렸다.',
+  },
+  D3: {
+    puzzle: 'P3',
+    lockedText: '알파벳 자물쇠가 걸려 있다. 다섯 글자를 맞춰야 한다.',
+    unlockedText: '자물쇠가 풀렸다.',
+    rewardItems: ['gear', 'key_piece_2'], // §2 — D3 해제가 공방 보상의 트리거
+  },
+  D4: {
+    puzzle: 'P_D4',
+    lockedText: '현관문이 잠겨 있다. 열쇠가 필요해 보인다.',
+    unlockedText: '문이 열렸다. 이제 나갈 수 있다.',
   },
 };
 
@@ -72,6 +89,25 @@ export const PUZZLES = {
     // 값이라, 여기 또는 CLOCK_TIME 둘 중 하나만 고치면 어긋난다 — 그래서
     // escape-flow.mjs 1번이 매번 자동으로 둘을 대조한다(사람이 놓쳐도 잡힘).
     wrongText: '맞지 않는다.',
+  },
+  P2: {
+    type: 'arrows',
+    length: 4,
+    answer: '↑↓←→', // ⭐ 정답 — 일기장 힌트("하늘·땅·심장·바른손")의 해석 결과
+    wrongText: '맞지 않는다.',
+  },
+  P3: {
+    type: 'letters',
+    length: 5,
+    answer: 'TRUTH', // ⭐ 정답 — 백지+아크릴판 겹치기로 드러나는 글자(paperModal.js가
+    // 이 값을 그대로 읽어 표시한다. 여기 말고 다른 곳에 "TRUTH"를 또 적지 않는다)
+    wrongText: '맞지 않는다.',
+  },
+  // D4는 코드 입력이 아니라 아이템 소지 판정이다(§3 P5의 결과물).
+  P_D4: {
+    type: 'item',
+    requiredItem: 'front_key',
+    wrongText: '열쇠가 없다.',
   },
 };
 
