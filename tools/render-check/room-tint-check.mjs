@@ -46,6 +46,27 @@ const browser = await puppeteer.launch({
   headless: true,
   args: ['--no-sandbox'],
 });
+// 검사 도중 예외가 나도 chrome.exe가 안 남게 finally에서 닫는다. exit/SIGINT
+// 훅은 그마저 못 지나간 경우(강제 종료 등)를 위한 마지막 안전망이다.
+let browserClosed = false;
+async function closeBrowser() {
+  if (browserClosed) return;
+  browserClosed = true;
+  await browser.close().catch(() => {});
+}
+process.on('exit', () => {
+  if (!browserClosed) browser.process()?.kill('SIGKILL');
+});
+process.on('SIGINT', async () => {
+  await closeBrowser();
+  process.exit(1);
+});
+
+const ABORT = Symbol('abort'); // 0번 절대 하한 실패 시 나머지 검사를 건너뛰는 신호
+const samples = {};
+const vignetteSamples = {};
+let aborted = false;
+try {
 const page = await browser.newPage();
 
 // 바닥 샘플 영역 — 960x600 뷰포트(m4-rooms.mjs와 동일) 기준. 세 번 헤맸다:
@@ -220,13 +241,10 @@ for (const [id, f] of Object.entries(files)) {
 
 if (absoluteFailures > 0) {
   console.error(`\nFAIL: 총 ${absoluteFailures}개 방에서 검은 화면 렌더 실패 감지 — 비율 검사를 건너뛰고 종료합니다.`);
-  await browser.close();
-  process.exit(1);
+  throw ABORT;
 }
 
 console.log('\n--- 방별 비율 및 톤 검사 ---');
-const samples = {};
-const vignetteSamples = {};
 for (const [id, f] of Object.entries(files)) {
   samples[id] = await sampleFloor(f);
   vignetteSamples[id] = await sampleVignette(f);
@@ -236,7 +254,13 @@ for (const [id, f] of Object.entries(files)) {
     `${id.padEnd(6)} RGB(${rgb.map((v) => v.toFixed(1)).join(', ')})  R/G=${(rgb[0] / rgb[1]).toFixed(2)}  B/G=${(rgb[2] / rgb[1]).toFixed(2)}  clip=${(clipRatio * 100).toFixed(2)}%  비네트비=${ratio.toFixed(3)}(중앙${centerLum.toFixed(1)}/모서리${cornerLum.toFixed(1)})`
   );
 }
-await browser.close();
+} catch (e) {
+  if (e !== ABORT) throw e;
+  aborted = true;
+} finally {
+  await closeBrowser();
+}
+if (aborted) process.exit(1);
 
 console.log('');
 const failures = [];

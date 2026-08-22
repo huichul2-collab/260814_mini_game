@@ -22,11 +22,31 @@ server.listen(0, '127.0.0.1', async () => {
     headless: true,
     args: ['--use-gl=swiftshader', '--no-sandbox'],
   });
-  const page = await browser.newPage();
-  await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'load' });
-  await new Promise((r) => setTimeout(r, 1000));
-  const n = await page.evaluate(() => window.__debug.getColliders().length);
-  console.log('실제 콜라이더 개수:', n);
-  await browser.close();
-  server.close();
+  // 검사 도중 예외가 나도 chrome.exe가 안 남게 finally에서 닫는다. exit/SIGINT
+  // 훅은 그마저 못 지나간 경우(강제 종료 등)를 위한 마지막 안전망이다.
+  let browserClosed = false;
+  async function closeBrowser() {
+    if (browserClosed) return;
+    browserClosed = true;
+    await browser.close().catch(() => {});
+  }
+  process.on('exit', () => {
+    if (!browserClosed) browser.process()?.kill('SIGKILL');
+  });
+  process.on('SIGINT', async () => {
+    await closeBrowser();
+    server.close();
+    process.exit(1);
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'load' });
+    await new Promise((r) => setTimeout(r, 1000));
+    const n = await page.evaluate(() => window.__debug.getColliders().length);
+    console.log('실제 콜라이더 개수:', n);
+  } finally {
+    await closeBrowser();
+    server.close();
+  }
 });

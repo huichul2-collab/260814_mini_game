@@ -50,6 +50,25 @@ const browser = await puppeteer.launch({
   headless: true,
   args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox'],
 });
+// 검사 도중 예외가 나도 chrome.exe가 안 남게 finally에서 닫는다. exit/SIGINT
+// 훅은 그마저 못 지나간 경우(강제 종료 등)를 위한 마지막 안전망이다.
+let browserClosed = false;
+async function closeBrowser() {
+  if (browserClosed) return;
+  browserClosed = true;
+  await browser.close().catch(() => {});
+}
+process.on('exit', () => {
+  if (!browserClosed) browser.process()?.kill('SIGKILL');
+});
+process.on('SIGINT', async () => {
+  await closeBrowser();
+  server.close();
+  process.exit(1);
+});
+
+let dump;
+try {
 const page = await browser.newPage();
 page.on('pageerror', (e) => console.error('[pageerror]', e.message));
 page.on('console', (m) => { if (m.type() === 'error') console.error('[console.error]', m.text()); });
@@ -62,7 +81,7 @@ await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'load', timeout: 20000
 await page.waitForFunction(() => !!(window.__debug && window.__debug.scene && window.__debug.getColliders), { timeout: 15000 });
 await sleep(300);
 
-const dump = await page.evaluate(() => {
+dump = await page.evaluate(() => {
   const scene = window.__debug.scene;
   const playerRoot = window.__debug.player ? window.__debug.player.root : null;
 
@@ -124,9 +143,10 @@ const dump = await page.evaluate(() => {
 
   return out;
 });
-
-await browser.close();
-server.close();
+} finally {
+  await closeBrowser();
+  server.close();
+}
 
 // 정렬 고정 — 좌표(x→y→z) 다음 geometry.type을 타이브레이크로 써서 씬
 // 순회 순서 차이가 diff에 안 잡히게 한다.

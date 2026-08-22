@@ -70,9 +70,28 @@ const browser = await puppeteer.launch({
   headless: true,
   args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox'],
 });
+// 검사 도중 예외가 나도 chrome.exe가 안 남게 finally에서 닫는다. exit/SIGINT
+// 훅은 그마저 못 지나간 경우(강제 종료 등)를 위한 마지막 안전망이다.
+let browserClosed = false;
+async function closeBrowser() {
+  if (browserClosed) return;
+  browserClosed = true;
+  await browser.close().catch(() => {});
+}
+process.on('exit', () => {
+  if (!browserClosed) browser.process()?.kill('SIGKILL');
+});
+process.on('SIGINT', async () => {
+  await closeBrowser();
+  server.close();
+  process.exit(1);
+});
+
+const ABORT = Symbol('abort'); // 0번 절대 하한 실패 시 나머지 검사를 건너뛰는 신호
+const logs = [];
+try {
 const page = await browser.newPage();
 await page.setViewport({ width: 960, height: 600 });
-const logs = [];
 page.on('pageerror', (e) => logs.push(`[pageerror] ${e.message}`));
 page.on('console', (m) => { if (m.type() === 'error') logs.push(`[console.error] ${m.text()}`); });
 
@@ -116,9 +135,8 @@ await page.screenshot({ path: shot0 });
   console.log(`${pass ? 'OK  ' : 'FAIL'} 절대하한: 평균휘도=${abs.avgLuma.toFixed(1)}(>=15) 검정비=${(abs.nearBlackRatio * 100).toFixed(1)}%(<50%) 최대픽셀=${abs.maxPixel}(>=200)`);
   if (!pass) {
     console.error('FAIL: 렌더 실패(검은 화면) — 나머지 검사를 건너뜁니다.');
-    await browser.close();
-    server.close();
-    process.exit(1);
+    failures++;
+    throw ABORT;
   }
 }
 
@@ -721,8 +739,12 @@ if (frontClick.ok) {
   failures++;
 }
 
-await browser.close();
-server.close();
+} catch (e) {
+  if (e !== ABORT) throw e;
+} finally {
+  await closeBrowser();
+  server.close();
+}
 
 console.log('');
 console.log('로그:', logs.length ? logs : '없음');

@@ -51,6 +51,24 @@ const browser = await puppeteer.launch({
   headless: true,
   args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox'],
 });
+// 검사 도중 예외가 나도 chrome.exe가 안 남게 finally에서 닫는다. exit/SIGINT
+// 훅은 그마저 못 지나간 경우(강제 종료 등)를 위한 마지막 안전망이다.
+let browserClosed = false;
+async function closeBrowser() {
+  if (browserClosed) return;
+  browserClosed = true;
+  await browser.close().catch(() => {});
+}
+process.on('exit', () => {
+  if (!browserClosed) browser.process()?.kill('SIGKILL');
+});
+process.on('SIGINT', async () => {
+  await closeBrowser();
+  server.close();
+  process.exit(1);
+});
+
+try {
 const page = await browser.newPage();
 await page.setViewport({ width: 960, height: 600 });
 const logs = [];
@@ -118,9 +136,10 @@ for (const room of ROOMS) {
   await shootRoom(room);
 }
 
-await browser.close();
-server.close();
-
 console.log('');
 console.log('로그:', logs.length ? logs : '없음');
 console.log('스크린샷 4장 생성 완료 (텔레포트 방식, 걷기 없음)');
+} finally {
+  await closeBrowser();
+  server.close();
+}

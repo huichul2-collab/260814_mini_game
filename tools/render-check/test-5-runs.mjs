@@ -17,7 +17,26 @@ const browser = await puppeteer.launch({
   headless: true,
   args: ['--no-sandbox'],
 });
+
+// 검사 도중 예외가 나도 chrome.exe가 안 남게 finally에서 닫는다. exit/SIGINT
+// 훅은 그마저 못 지나간 경우(강제 종료 등)를 위한 마지막 안전망이다.
+let browserClosed = false;
+async function closeBrowser() {
+  if (browserClosed) return;
+  browserClosed = true;
+  await browser.close().catch(() => {});
+}
+process.on('exit', () => {
+  if (!browserClosed) browser.process()?.kill('SIGKILL');
+});
+process.on('SIGINT', async () => {
+  await closeBrowser();
+  process.exit(1);
+});
+
 const page = await browser.newPage();
+
+try {
 
 async function getStats(pngPath) {
   const b64 = fs.readFileSync(pngPath).toString('base64');
@@ -53,7 +72,9 @@ for (let run = 1; run <= 5; run++) {
   console.log('');
 }
 
-await browser.close();
+} finally {
+  await closeBrowser();
+}
 
 console.log('=== 5회 실행 측정 요약 ===');
 for (const id of ROOM_IDS) {

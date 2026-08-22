@@ -49,9 +49,68 @@ const browser = await puppeteer.launch({
   headless: true,
   args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox'],
 });
+// 검사 도중 예외가 나도 chrome.exe가 안 남게 finally에서 닫는다. exit/SIGINT
+// 훅은 그마저 못 지나간 경우(강제 종료 등)를 위한 마지막 안전망이다.
+let browserClosed = false;
+async function closeBrowser() {
+  if (browserClosed) return;
+  browserClosed = true;
+  await browser.close().catch(() => {});
+}
+process.on('exit', () => {
+  if (!browserClosed) browser.process()?.kill('SIGKILL');
+});
+process.on('SIGINT', async () => {
+  await closeBrowser();
+  server.close();
+  process.exit(1);
+});
+
+const logs = [];
+let stuckReport = null;
+let failCount = 0;
+const failedLegNames = [];
+
+// 문D1 옆(책상이 벽에 밀착된 구석)은 living(0,0)으로 직선/대각선 이동하면
+// 책상 모서리에 걸린다 — 정상적인 코너 막힘(입력을 반대로 바꾸면 실제로
+// 빠져나오는 것 확인됨, docs/STATE.md 참고)이라 "이론상 통과 가능한
+// 경로만 테스트한다" 원칙에 따라 m4-rooms.mjs와 똑같은 경유점을 쓴다.
+const VIA_D1_TO_LIVING = [{ x: -0.5, z: -3.3 }, { x: -0.5, z: -2.0 }];
+
+// M9-C 배치1: 공방(bedA) 방 중앙(-0.5,-5.0)에 작업대, 보관소(bedB) 방
+// 한가운데(0,5.2)에 기계장치가 §11.2대로 정확히 들어앉으면서 옛 목표점
+// 두 개가 가구 안이 됐다(m4-rooms.mjs와 동일 사유 — 그쪽 주석 참고).
+// 같은 이유로 "D3 가장자리 → bedB"도 목표를 기계장치 앞이 아니라 문
+// 바로 안쪽으로 당겼다(원래 목적인 "가장자리 통과" 자체는 그대로 검증됨).
+const legs = [
+  { name: 'living(spawn)', target: { x: 0, z: 0 } },
+  { name: 'bedA', target: { x: -2.0, z: -5.0 }, via: [{ x: -0.9, z: -3.6 }] },
+  { name: 'bedA→living', target: { x: 0, z: 0 }, via: VIA_D1_TO_LIVING },
+  { name: 'study', target: { x: 5.0, z: 0.5 } },
+  { name: 'study→living', target: { x: 0, z: 0 } },
+  { name: 'bedB', target: { x: -1.5, z: 5.0 }, via: [{ x: 0, z: 3.6 }] },
+  { name: 'bedB→living', target: { x: 0, z: 0 } },
+  { name: 'D1 가장자리 → bedA', target: { x: -0.9, z: -3.6 } },
+  { name: 'D1 가장자리 → living', target: { x: 0, z: 0 }, via: VIA_D1_TO_LIVING },
+  { name: 'D2 가장자리 → study', target: { x: 5.0, z: 0.1 } },
+  { name: 'D2 가장자리 → living', target: { x: 0, z: 0 } },
+  { name: 'D3 가장자리 → bedB', target: { x: -0.4, z: 3.6 } },
+  { name: 'D3 가장자리 → living', target: { x: 0, z: 0 } },
+];
+
+// stuck-diagnose.mjs가 항상 exit 1인 채로 있으면 새 실패가 생겨도 아무도
+// 못 알아챈다 — 여기 있는 이름만 실패해도 exit 0(+"알려진 예외 N건"),
+// 목록에 없는 실패가 하나라도 있으면 exit 1.
+//
+// M9-B에서 D2가 잠기면서 한때 study 관련 2개 구간이 여기 있었다 — 이제는
+// 주행 시작 전에 window.__debug.unlockAllDoors()로 문을 전부 열어 잠금과
+// 분리했으므로(위 참고) 순수 기하 문제만 남아야 한다. 빈 배열로 둔다 —
+// 여기 뭔가 다시 채워진다면 그건 진짜 회귀다.
+const KNOWN_FAILURES = [];
+
+try {
 const page = await browser.newPage();
 await page.setViewport({ width: 960, height: 600 });
-const logs = [];
 page.on('pageerror', (e) => logs.push(`[pageerror] ${e.message}`));
 page.on('console', (m) => { if (m.type() === 'error') logs.push(`[console.error] ${m.text()}`); });
 
@@ -237,46 +296,6 @@ async function diagnoseAt(pos, axisAtFreeze, yaw) {
   }, { pos, axisAtFreeze, yaw });
 }
 
-// 문D1 옆(책상이 벽에 밀착된 구석)은 living(0,0)으로 직선/대각선 이동하면
-// 책상 모서리에 걸린다 — 정상적인 코너 막힘(입력을 반대로 바꾸면 실제로
-// 빠져나오는 것 확인됨, docs/STATE.md 참고)이라 "이론상 통과 가능한
-// 경로만 테스트한다" 원칙에 따라 m4-rooms.mjs와 똑같은 경유점을 쓴다.
-const VIA_D1_TO_LIVING = [{ x: -0.5, z: -3.3 }, { x: -0.5, z: -2.0 }];
-
-// M9-C 배치1: 공방(bedA) 방 중앙(-0.5,-5.0)에 작업대, 보관소(bedB) 방
-// 한가운데(0,5.2)에 기계장치가 §11.2대로 정확히 들어앉으면서 옛 목표점
-// 두 개가 가구 안이 됐다(m4-rooms.mjs와 동일 사유 — 그쪽 주석 참고).
-// 같은 이유로 "D3 가장자리 → bedB"도 목표를 기계장치 앞이 아니라 문
-// 바로 안쪽으로 당겼다(원래 목적인 "가장자리 통과" 자체는 그대로 검증됨).
-const legs = [
-  { name: 'living(spawn)', target: { x: 0, z: 0 } },
-  { name: 'bedA', target: { x: -2.0, z: -5.0 }, via: [{ x: -0.9, z: -3.6 }] },
-  { name: 'bedA→living', target: { x: 0, z: 0 }, via: VIA_D1_TO_LIVING },
-  { name: 'study', target: { x: 5.0, z: 0.5 } },
-  { name: 'study→living', target: { x: 0, z: 0 } },
-  { name: 'bedB', target: { x: -1.5, z: 5.0 }, via: [{ x: 0, z: 3.6 }] },
-  { name: 'bedB→living', target: { x: 0, z: 0 } },
-  { name: 'D1 가장자리 → bedA', target: { x: -0.9, z: -3.6 } },
-  { name: 'D1 가장자리 → living', target: { x: 0, z: 0 }, via: VIA_D1_TO_LIVING },
-  { name: 'D2 가장자리 → study', target: { x: 5.0, z: 0.1 } },
-  { name: 'D2 가장자리 → living', target: { x: 0, z: 0 } },
-  { name: 'D3 가장자리 → bedB', target: { x: -0.4, z: 3.6 } },
-  { name: 'D3 가장자리 → living', target: { x: 0, z: 0 } },
-];
-
-// stuck-diagnose.mjs가 항상 exit 1인 채로 있으면 새 실패가 생겨도 아무도
-// 못 알아챈다 — 여기 있는 이름만 실패해도 exit 0(+"알려진 예외 N건"),
-// 목록에 없는 실패가 하나라도 있으면 exit 1.
-//
-// M9-B에서 D2가 잠기면서 한때 study 관련 2개 구간이 여기 있었다 — 이제는
-// 주행 시작 전에 window.__debug.unlockAllDoors()로 문을 전부 열어 잠금과
-// 분리했으므로(위 참고) 순수 기하 문제만 남아야 한다. 빈 배열로 둔다 —
-// 여기 뭔가 다시 채워진다면 그건 진짜 회귀다.
-const KNOWN_FAILURES = [];
-
-let stuckReport = null;
-let failCount = 0;
-const failedLegNames = [];
 for (const leg of legs) {
   if (leg.via) {
     let viaFailed = false;
@@ -380,8 +399,10 @@ if (gapInfo.desk && gapInfo.chair) {
   console.log(`SKIP: living.desk 또는 living.chair 콜라이더를 못 찾음(desk=${!!gapInfo.desk}, chair=${!!gapInfo.chair})`);
 }
 
-await browser.close();
-server.close();
+} finally {
+  await closeBrowser();
+  server.close();
+}
 
 console.log('');
 console.log('로그:', logs.length ? logs : '없음');

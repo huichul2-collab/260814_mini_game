@@ -70,6 +70,19 @@ const browser = await puppeteer.launch({
   headless: true,
   args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox'],
 });
+// 이미 try/finally로 browser.close()를 감싸고 있다(아래) — exit/SIGINT
+// 훅은 그마저 못 지나간 경우(강제 종료 등)를 위한 마지막 안전망이다.
+let browserClosed = false;
+process.on('exit', () => {
+  if (!browserClosed) browser.process()?.kill('SIGKILL');
+});
+process.on('SIGINT', async () => {
+  browserClosed = true;
+  await browser.close().catch(() => {});
+  server.close();
+  process.exit(1);
+});
+
 const page = await browser.newPage();
 await page.setViewport({ width: 960, height: 600 });
 
@@ -101,7 +114,8 @@ try {
 } catch (e) {
   logs.push(`[fatal] ${e.message}`);
 } finally {
-  await browser.close();
+  browserClosed = true;
+  await browser.close().catch(() => {});
   server.close();
 }
 

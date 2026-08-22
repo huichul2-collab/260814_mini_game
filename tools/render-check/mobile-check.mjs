@@ -71,8 +71,28 @@ const browser = await puppeteer.launch({
   args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox'],
 });
 
+// 검사 도중 예외가 나도 chrome.exe가 안 남게 finally에서 닫는다. exit/SIGINT
+// 훅은 그마저 못 지나간 경우(강제 종료 등)를 위한 마지막 안전망이다. 이
+// 스크립트는 브라우저를 2개 띄운다(뷰포트별 browser + 사후분석용
+// sampleBrowser) — 둘 다 훅에 건다.
+const liveBrowsers = new Set([browser]);
+function trackBrowser(b) { liveBrowsers.add(b); return b; }
+async function closeAllBrowsers() {
+  for (const b of liveBrowsers) await b.close().catch(() => {});
+  liveBrowsers.clear();
+}
+process.on('exit', () => {
+  for (const b of liveBrowsers) b.process()?.kill('SIGKILL');
+});
+process.on('SIGINT', async () => {
+  await closeAllBrowsers();
+  server.close();
+  process.exit(1);
+});
+
 const results = [];
 
+try {
 for (const vp of VIEWPORTS) {
   const page = await browser.newPage();
   await page.setViewport({
@@ -221,11 +241,8 @@ for (const vp of VIEWPORTS) {
   await page.close();
 }
 
-await browser.close();
-server.close();
-
 // ---------- 렌더 성공 판정 (room-tint-check.mjs와 같은 절대 하한 재사용) ----------
-const sampleBrowser = await puppeteer.launch({ executablePath: findChrome(), headless: true, args: ['--no-sandbox'] });
+const sampleBrowser = trackBrowser(await puppeteer.launch({ executablePath: findChrome(), headless: true, args: ['--no-sandbox'] }));
 const samplePage = await sampleBrowser.newPage();
 async function sampleAbsolute(pngPath) {
   const b64 = fs.readFileSync(pngPath).toString('base64');
@@ -264,7 +281,10 @@ for (const r of results) {
     r.renderInfo.pass = pass;
   }
 }
-await sampleBrowser.close();
+} finally {
+  await closeAllBrowsers();
+  server.close();
+}
 
 // ---------- 표 출력 ----------
 console.log('\n=== 모바일 현황 파악 결과 ===\n');

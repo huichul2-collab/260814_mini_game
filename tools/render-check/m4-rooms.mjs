@@ -43,9 +43,28 @@ const browser = await puppeteer.launch({
   args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox'],
 });
 
+// 검사 도중 예외가 나도 chrome.exe가 안 남게 finally에서 닫는다. exit/SIGINT
+// 훅은 그마저 못 지나간 경우(강제 종료 등)를 위한 마지막 안전망이다.
+let browserClosed = false;
+async function closeBrowser() {
+  if (browserClosed) return;
+  browserClosed = true;
+  await browser.close().catch(() => {});
+}
+process.on('exit', () => {
+  if (!browserClosed) browser.process()?.kill('SIGKILL');
+});
+process.on('SIGINT', async () => {
+  await closeBrowser();
+  server.close();
+  process.exit(1);
+});
+
+let failures = 0;
+let logs = [];
+try {
 const page = await browser.newPage();
 await page.setViewport({ width: 960, height: 600 });
-const logs = [];
 page.on('pageerror', (e) => {
   if (!e.message.includes('linearRampToValueAtTime')) logs.push(`[pageerror] ${e.message}`);
 });
@@ -117,7 +136,6 @@ async function walkTo(target, { tol = 0.3, timeoutMs = 20000, pollMs = 150 } = {
   return { ok: false, pos: (await getPos()) || { x: 0, z: 0 }, ms: Date.now() - start };
 }
 
-let failures = 0;
 // ⚠️ 이 스크립트는 "주행 테스트(13개 구간 도달)" 전용이다. 스크린샷은
 // visual-shot.mjs가 텔레포트로 따로 찍는다 — 한 스크립트가 "도달하는가"와
 // "어떻게 보이는가"를 동시에 맡은 게 이전 visual-diff 오염 사고의 뿌리였다
@@ -183,9 +201,10 @@ await leg('D2 가장자리 → living', { x: 0, z: 0 });
 // (stuck-diagnose.mjs 프레임 단위 테스트에서 여기서 실제 STUCK 재현됨).
 await leg('D3 가장자리 → bedB', { x: -0.4, z: 3.6 });
 await leg('D3 가장자리 → living', { x: 0, z: 0 });
-
-await browser.close();
-server.close();
+} finally {
+  await closeBrowser();
+  server.close();
+}
 
 console.log('');
 console.log('로그:', logs.length ? logs : '없음');

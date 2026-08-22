@@ -59,6 +59,25 @@ const browser = await puppeteer.launch({
   args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox'],
 });
 
+// 검사 도중 예외가 나도 chrome.exe가 안 남게 finally에서 닫는다. exit/SIGINT
+// 훅은 그마저 못 지나간 경우(강제 종료 등)를 위한 마지막 안전망이다.
+let browserClosed = false;
+async function closeBrowser() {
+  if (browserClosed) return;
+  browserClosed = true;
+  await browser.close().catch(() => {});
+}
+process.on('exit', () => {
+  if (!browserClosed) browser.process()?.kill('SIGKILL');
+});
+process.on('SIGINT', async () => {
+  await closeBrowser();
+  server.close();
+  process.exit(1);
+});
+
+let failures = 0;
+try {
 const page = await browser.newPage();
 await page.setViewport({ width: 960, height: 600 });
 page.on('pageerror', (e) => {
@@ -122,7 +141,6 @@ async function walkTo(target, { tol = 0.3, timeoutMs = 15000, pollMs = 100 } = {
   return { ok: false, pos: await getPos() };
 }
 
-let failures = 0;
 function testResult(name, pass, msg) {
   if (pass) {
     console.log(`OK   ${name} — ${msg}`);
@@ -240,9 +258,10 @@ await sleep(1200);
 const winBedBPath = path.join(gameDir, '..', 'tools', 'render-check', 'm4-win-bedB.png');
 await page.screenshot({ path: winBedBPath });
 console.log(`OK   W3 (bedB 남창문 실내 시점) 스크린샷 캡처: ${winBedBPath}`);
-
-await browser.close();
-server.close();
+} finally {
+  await closeBrowser();
+  server.close();
+}
 
 console.log('');
 console.log(failures === 0 ? '마당 및 창문 검증 전부 통과' : `마당 및 창문 검증 ${failures}건 실패`);

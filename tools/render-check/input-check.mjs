@@ -51,6 +51,25 @@ const browser = await puppeteer.launch({
   headless: true,
   args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox'],
 });
+// 검사 도중 예외가 나도 chrome.exe가 안 남게 finally에서 닫는다. exit/SIGINT
+// 훅은 그마저 못 지나간 경우(강제 종료 등)를 위한 마지막 안전망이다.
+let browserClosed = false;
+async function closeBrowser() {
+  if (browserClosed) return;
+  browserClosed = true;
+  await browser.close().catch(() => {});
+}
+process.on('exit', () => {
+  if (!browserClosed) browser.process()?.kill('SIGKILL');
+});
+process.on('SIGINT', async () => {
+  await closeBrowser();
+  server.close();
+  process.exit(1);
+});
+
+let failed = [];
+try {
 const page = await browser.newPage();
 await page.setViewport({ width: 960, height: 600 });
 const logs = [];
@@ -164,12 +183,13 @@ console.log('');
 console.log('로그:', logs.length ? logs : '없음');
 console.log('');
 
-const failed = results.filter((r) => !r.ok);
+failed = results.filter((r) => !r.ok);
 console.log(`총 ${results.length}개 조합, 재현(실패) ${failed.length}개`);
 if (failed.length) {
   console.log('재현된 조합:', failed.map((f) => f.name).join(' / '));
 }
-
-await browser.close();
-server.close();
+} finally {
+  await closeBrowser();
+  server.close();
+}
 process.exit(failed.length ? 1 : 0);

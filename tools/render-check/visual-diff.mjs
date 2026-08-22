@@ -33,6 +33,24 @@ const browser = await puppeteer.launch({
   headless: true,
   args: ['--no-sandbox'],
 });
+// 검사 도중 예외가 나도 chrome.exe가 안 남게 finally에서 닫는다. exit/SIGINT
+// 훅은 그마저 못 지나간 경우(강제 종료 등)를 위한 마지막 안전망이다.
+let browserClosed = false;
+async function closeBrowser() {
+  if (browserClosed) return;
+  browserClosed = true;
+  await browser.close().catch(() => {});
+}
+process.on('exit', () => {
+  if (!browserClosed) browser.process()?.kill('SIGKILL');
+});
+process.on('SIGINT', async () => {
+  await closeBrowser();
+  process.exit(1);
+});
+
+let failures = 0;
+try {
 const page = await browser.newPage();
 
 async function analyzeImage(pngPath) {
@@ -107,7 +125,6 @@ function calcCorrelation(h1, h2) {
 const CORR_THRESHOLD = 0.999;
 const RGB_DIFF_THRESHOLD = 0.5;
 
-let failures = 0;
 console.log('--- visual-diff (baseline/ ↔ current 비교) ---');
 
 for (const id of ROOM_IDS) {
@@ -135,7 +152,9 @@ for (const id of ROOM_IDS) {
   if (!pass) failures++;
 }
 
-await browser.close();
+} finally {
+  await closeBrowser();
+}
 
 if (failures > 0) {
   console.error(`\nFAIL: 총 ${failures}개 방에서 시각 검증 실패 — merge 불가`);
