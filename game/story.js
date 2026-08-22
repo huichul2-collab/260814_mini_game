@@ -13,6 +13,7 @@
 // D2 정답이 전부 같이 바뀐다("단서와 정답이 두 곳에 적히면 반드시 어긋난다",
 // docs/spec/M9-escape.md §10.3).
 export const CLOCK_TIME = { hour: 8, minute: 25 };
+export const BOOKSHELF_BOOK_COUNTS = [0, 0, 3, 5];
 
 function pad2(n) {
   return String(n).padStart(2, '0');
@@ -21,7 +22,12 @@ function pad2(n) {
 export const OBJECTS = {
   'living.desk': { name: '책상', text: '오래 써서 반질반질해진 나무 책상.' },
   'living.chair': { name: '의자', text: '앉으면 삐걱 소리가 날 것 같다.' },
-  'living.bookshelf': { name: '책장', text: '책이 몇 권 꽂혀 있다.' },
+  'living.bookshelf': {
+    name: '책장',
+    text: `4칸 책장이다. 위에서부터 책이 ${BOOKSHELF_BOOK_COUNTS[0]}권, ${BOOKSHELF_BOOK_COUNTS[1]}권, ${BOOKSHELF_BOOK_COUNTS[2]}권, ${BOOKSHELF_BOOK_COUNTS[3]}권 꽂혀 있다.`,
+    bookCounts: BOOKSHELF_BOOK_COUNTS,
+  },
+  'living.notepad': { name: '낙서장', text: '12월 24일. 오늘은 크리스마스 이브.' },
   'living.plant': { name: '화분', text: '누군가 꾸준히 물을 준 흔적이 있다.' },
   'living.frame': { name: '액자', text: '낡은 사진이 걸려 있다.' },
   'living.rug': { name: '러그', text: '푹신하고 붉은 러그.' },
@@ -45,9 +51,10 @@ export const OBJECTS = {
 
   'study.diary': {
     name: '일기장',
-    text: '펼쳐진 채로 놓여 있다. "하늘 · 땅 · 심장 · 바른손" — 무슨 순서인지 적혀 있다.',
+    text: '펼쳐진 채로 놓여 있다. "하늘 · 땅 · 심장 · 바른손"',
     grantItems: ['uv_lantern', 'key_piece_1'], // §2 — 서재 조사의 보상 두 가지, 한 번에 지급
   },
+  'study.pencilCase': { name: '필통', text: '지우개, 빨간 색연필, 0.5mm 샤프심, 검정 샤프가 들어 있다.' },
   'study.keyPiece1': { name: '열쇠 조각', text: '금속으로 된 조각. 무언가의 일부처럼 보인다.' },
 
   // 서재 배경 가구 6개 — 순수 배경 소품(퍼즐 무관). P2 단서(일기장)를

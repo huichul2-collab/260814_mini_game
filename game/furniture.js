@@ -61,4 +61,6 @@ export const FURNITURE = [
   { id: 'bedB.cabinet', room: 'bedB', type: 'cabinet', pos: [-1.69, 0, 6.15], rotY: Math.PI / 2 },
   { id: 'bedB.crateStack', room: 'bedB', type: 'crateStack', pos: [1.03, 0, 4.28], rotY: 0 },
   { id: 'bedB.oldRug', room: 'bedB', type: 'oldRug', pos: [0, 0.01, 5.0], rotY: 0 },
+  { id: 'living.notepad', room: 'living', type: 'notepad', pos: [0.35, 0.75, -2.66], rotY: 0 },
+  { id: 'study.pencilCase', room: 'study', type: 'pencilCase', pos: [5.80, 0.75, -1.50], rotY: 0 },
 ];
