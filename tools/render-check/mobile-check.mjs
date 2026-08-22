@@ -91,6 +91,8 @@ process.on('SIGINT', async () => {
 });
 
 const results = [];
+let desktopJoystick = { visible: false };
+let desktopNotice = false;
 
 try {
 for (const vp of VIEWPORTS) {
@@ -139,6 +141,9 @@ for (const vp of VIEWPORTS) {
   let postClickRects = null;
   let rendererInfo = null;
   let canvasRes = null;
+  let joystickInfo = null;
+  let moveInfo = null;
+  let simulInfo = null;
 
   if (!loadTimedOut) {
     const btnBox = await page.evaluate(() => {
@@ -233,13 +238,156 @@ for (const vp of VIEWPORTS) {
         rotated: Math.abs(deltaRad) > 0.01,
       };
     }
+    // ---------- (e) 가상 조이스틱 표시 검사 ----------
+    joystickInfo = await page.evaluate(() => {
+      const el = document.getElementById('virtual-joystick-container');
+      const knob = document.getElementById('virtual-joystick-knob');
+      const base = document.getElementById('virtual-joystick-base');
+      if (!el) return { exists: false, visible: false };
+      const r = el.getBoundingClientRect();
+      const style = window.getComputedStyle(el);
+      const isVisible = style.display !== 'none' && style.visibility !== 'hidden' && parseFloat(style.opacity || '1') > 0;
+      return {
+        exists: true,
+        visible: isVisible,
+        rect: { left: r.left, top: r.top, width: r.width, height: r.height, bottom: r.bottom },
+        knobExists: !!knob,
+        baseExists: !!base,
+      };
+    });
+
+    // ---------- (f) 조이스틱 터치 드래그로 캐릭터 실제 이동 검증 ----------
+    moveInfo = null;
+    if (joystickInfo.visible) {
+      const posBefore = await page.evaluate(() => {
+        const p = window.__debug?.player?.root?.position;
+        return p ? { x: p.x, y: p.y, z: p.z } : null;
+      });
+
+      if (posBefore) {
+        const baseCenter = await page.evaluate(() => {
+          const base = document.getElementById('virtual-joystick-base');
+          if (!base) return null;
+          const r = base.getBoundingClientRect();
+          return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+        });
+
+        if (baseCenter) {
+          // 조이스틱을 위로 45px 드래그 (전진/W 방향)
+          const jTouch = await page.touchscreen.touchStart(baseCenter.x, baseCenter.y);
+          await jTouch.move(baseCenter.x, baseCenter.y - 45);
+          await sleep(500); // 0.5초간 전진 이동 대기
+          await jTouch.end();
+          await sleep(100);
+
+          const posAfter = await page.evaluate(() => {
+            const p = window.__debug?.player?.root?.position;
+            return p ? { x: p.x, y: p.y, z: p.z } : null;
+          });
+
+          if (posAfter) {
+            const dx = posAfter.x - posBefore.x;
+            const dz = posAfter.z - posBefore.z;
+            const dist = Math.hypot(dx, dz);
+            moveInfo = {
+              posBefore,
+              posAfter,
+              deltaX: dx,
+              deltaZ: dz,
+              distMoved: dist,
+              moved: dist >= 0.15, // 0.5초 동안 최소 0.15m 이상 전진
+            };
+          }
+        }
+      }
+    }
+
+    // ---------- (g) 조이스틱 + 우측 시점회전 동시 입력 검증 ----------
+    simulInfo = null;
+    if (joystickInfo.visible) {
+      const yawBeforeSim = await page.evaluate(() => window.__debug?.followCam?.getYaw?.() ?? 0);
+      const posBeforeSim = await page.evaluate(() => {
+        const p = window.__debug?.player?.root?.position;
+        return p ? { x: p.x, z: p.z } : null;
+      });
+
+      const baseCenter = await page.evaluate(() => {
+        const base = document.getElementById('virtual-joystick-base');
+        if (!base) return null;
+        const r = base.getBoundingClientRect();
+        return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      });
+
+      if (baseCenter && posBeforeSim) {
+        // 1번 터치: 조이스틱 전진 유지
+        const jTouch = await page.touchscreen.touchStart(baseCenter.x, baseCenter.y);
+        await jTouch.move(baseCenter.x, baseCenter.y - 45);
+
+        // 2번 터치: 우측 화면(폭 70% -> 85%)에서 시점 회전 스와이프
+        const rightStartX = vp.width * 0.70;
+        const rightEndX = vp.width * 0.85;
+        const rightY = vp.height * 0.5;
+
+        const rTouch = await page.touchscreen.touchStart(rightStartX, rightY);
+        for (let i = 1; i <= 6; i++) {
+          await rTouch.move(rightStartX + ((rightEndX - rightStartX) * i) / 6, rightY);
+          await sleep(20);
+        }
+        await sleep(250);
+
+        const yawAfterSim = await page.evaluate(() => window.__debug?.followCam?.getYaw?.() ?? 0);
+        const posAfterSim = await page.evaluate(() => {
+          const p = window.__debug?.player?.root?.position;
+          return p ? { x: p.x, z: p.z } : null;
+        });
+
+        await rTouch.end();
+        await jTouch.end();
+        await sleep(100);
+
+        if (posAfterSim) {
+          const yawDelta = Math.abs(yawAfterSim - yawBeforeSim);
+          const distSim = Math.hypot(posAfterSim.x - posBeforeSim.x, posAfterSim.z - posBeforeSim.z);
+          simulInfo = {
+            yawDelta,
+            distSim,
+            simulOk: yawDelta >= 0.01 && distSim >= 0.1,
+          };
+        }
+      }
+    }
   }
 
   results.push({
-    vp, loadTimedOut, preClick, postClickRects, dragInfo, renderInfo, canvasRes, rendererInfo, consoleErrors,
+    vp, loadTimedOut, preClick, postClickRects, dragInfo, renderInfo, canvasRes, rendererInfo,
+    joystickInfo, moveInfo, simulInfo, consoleErrors,
   });
   await page.close();
 }
+
+// ---------- (h) 데스크톱 뷰포트(960x600, mouse)에서 조이스틱 미표시 검사 ----------
+const desktopPage = await browser.newPage();
+await desktopPage.setViewport({ width: 960, height: 600, isMobile: false, hasTouch: false });
+await desktopPage.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'load', timeout: 20000 });
+await sleep(300);
+desktopNotice = await desktopPage.evaluate(() => !!document.getElementById('mobile-notice'));
+await desktopPage.waitForFunction(() => {
+  const btn = document.getElementById('audio-start-btn');
+  return btn && !btn.disabled;
+}, { timeout: 15000 }).catch(() => {});
+await desktopPage.click('#audio-start-btn');
+await sleep(600);
+desktopJoystick = await desktopPage.evaluate(() => {
+  const el = document.getElementById('virtual-joystick-container');
+  if (!el) return { exists: false, visible: false };
+  const style = window.getComputedStyle(el);
+  return {
+    exists: true,
+    visible: style.display !== 'none' && style.visibility !== 'hidden' && parseFloat(style.opacity || '1') > 0,
+    display: style.display,
+  };
+});
+await desktopPage.close();
 
 // ---------- 렌더 성공 판정 (room-tint-check.mjs와 같은 절대 하한 재사용) ----------
 const sampleBrowser = trackBrowser(await puppeteer.launch({ executablePath: findChrome(), headless: true, args: ['--no-sandbox'] }));
@@ -287,50 +435,53 @@ for (const r of results) {
 }
 
 // ---------- 표 출력 ----------
-console.log('\n=== 모바일 현황 파악 결과 ===\n');
-console.log('| 뷰포트 | (a)렌더성공 | (b)시점회전(폭20~80% 스와이프) | (c)안내표시 | (d)UI잘림 |');
-console.log('|---|---|---|---|---|');
+console.log('\n=== 모바일 가상 조이스틱 및 터치 검증 결과 ===\n');
+console.log('| 뷰포트 | (a)렌더성공 | (b)시점회전 | (c)안내표시 | (d)조이스틱표시 | (e)조이스틱이동 | (f)동시입력 |');
+console.log('|---|---|---|---|---|---|---|');
 for (const r of results) {
-  const a = r.loadTimedOut ? 'FAIL(로딩타임아웃)' : (r.renderInfo?.pass ? 'OK' : 'FAIL');
+  const a = r.loadTimedOut ? 'FAIL(타임아웃)' : (r.renderInfo?.pass ? 'OK' : 'FAIL');
   const b = r.dragInfo ? `${r.dragInfo.deltaRad.toFixed(3)}rad(${r.dragInfo.deltaDeg.toFixed(1)}°)` : 'N/A';
   const c = r.preClick.hasNotice ? 'OK' : 'FAIL(안 뜸)';
-  const preOverflow = r.preClick.rects.notice?.overflow || r.preClick.rects.btn?.overflow || r.preClick.rects.loading?.overflow;
-  const postOverflow = r.postClickRects?.overflow;
-  const d = (preOverflow || postOverflow) ? `잘림 있음${preOverflow ? '(로딩UI)' : ''}${postOverflow ? '(힌트)' : ''}` : '없음';
-  console.log(`| ${r.vp.label} | ${a} | ${b} | ${c} | ${d} |`);
+  const d = r.joystickInfo?.visible ? 'OK' : 'FAIL';
+  const e = r.moveInfo?.moved ? `OK (${r.moveInfo.distMoved.toFixed(2)}m)` : 'FAIL';
+  const f = r.simulInfo?.simulOk ? 'OK' : 'FAIL';
+  console.log(`| ${r.vp.label} | ${a} | ${b} | ${c} | ${d} | ${e} | ${f} |`);
 }
 
-console.log('\n=== 상세 ===\n');
+console.log('\n--- 데스크톱(960x600) 비터치 환경 검사 ---');
+console.log(`데스크톱 조이스틱 미표시: ${!desktopJoystick.visible ? 'OK (display: none)' : 'FAIL (노출됨!)'}`);
+console.log(`데스크톱 모바일안내 미표시: ${!desktopNotice ? 'OK' : 'FAIL'}`);
+
+console.log('\n=== 상세 내역 ===\n');
 for (const r of results) {
   console.log(`--- ${r.vp.label} ---`);
   if (r.loadTimedOut) {
-    console.log('  로딩이 15초 내 안 끝남 (asset gate 타임아웃 안전망 10초를 넘김) — 렌더/드래그/FPS 측정 스킵');
-    if (r.consoleErrors.length) console.log('  콘솔 에러:', r.consoleErrors);
+    console.log('  로딩이 15초 내 안 끝남');
     continue;
   }
-  console.log(`  안내: hasNotice=${r.preClick.hasNotice} text="${r.preClick.noticeText || ''}"`);
-  console.log(`  로딩 UI 잘림: loading=${JSON.stringify(r.preClick.rects.loading)}`);
-  console.log(`             notice=${JSON.stringify(r.preClick.rects.notice)}`);
-  console.log(`             btn=${JSON.stringify(r.preClick.rects.btn)}`);
-  if (r.postClickRects) console.log(`  힌트(#hint) 잘림: ${JSON.stringify(r.postClickRects)}`);
-  if (r.renderInfo) {
-    console.log(`  렌더: avgLuma=${r.renderInfo.abs.avgLuma.toFixed(1)}(>=15) 검정비=${(r.renderInfo.abs.nearBlackRatio * 100).toFixed(1)}%(<50%) 최대픽셀=${r.renderInfo.abs.maxPixel}(>=200) → ${r.renderInfo.pass ? 'OK' : 'FAIL'}`);
-    console.log(`  스크린샷: ${r.renderInfo.shotPath}`);
+  console.log(`  안내 문구: "${r.preClick.noticeText || ''}"`);
+  console.log(`  조이스틱: visible=${r.joystickInfo?.visible} rect=${JSON.stringify(r.joystickInfo?.rect)}`);
+  if (r.moveInfo) {
+    console.log(`  조이스틱 이동: dist=${r.moveInfo.distMoved.toFixed(3)}m (dx=${r.moveInfo.deltaX.toFixed(3)}, dz=${r.moveInfo.deltaZ.toFixed(3)}) → ${r.moveInfo.moved ? 'OK' : 'FAIL'}`);
+  }
+  if (r.simulInfo) {
+    console.log(`  동시 입력(조이스틱 이동+카메라 회전): Δyaw=${r.simulInfo.yawDelta.toFixed(3)}rad, dist=${r.simulInfo.distSim.toFixed(3)}m → ${r.simulInfo.simulOk ? 'OK' : 'FAIL'}`);
   }
   if (r.dragInfo) {
-    console.log(`  터치 스와이프(폭 20%~80%, ${r.dragInfo.swipePx.toFixed(0)}px): yaw ${r.dragInfo.yawBefore.toFixed(4)} → ${r.dragInfo.yawAfter.toFixed(4)} rad, Δ=${r.dragInfo.deltaRad.toFixed(4)}rad (${r.dragInfo.deltaDeg.toFixed(1)}°)`);
+    console.log(`  우측 시점 회전: Δyaw=${r.dragInfo.deltaRad.toFixed(4)}rad (${r.dragInfo.deltaDeg.toFixed(1)}°)`);
   }
-  if (r.canvasRes) {
-    console.log(`  캔버스: 내부해상도=${r.canvasRes.w}x${r.canvasRes.h} CSS크기=${r.canvasRes.cssW}x${r.canvasRes.cssH} devicePixelRatio=${r.canvasRes.dpr} (renderer는 min(dpr,2) 적용)`);
+  if (r.renderInfo) {
+    console.log(`  렌더 품질: avgLuma=${r.renderInfo.abs.avgLuma.toFixed(1)} 검정비=${(r.renderInfo.abs.nearBlackRatio * 100).toFixed(1)}% → ${r.renderInfo.pass ? 'OK' : 'FAIL'}`);
   }
-  if (r.rendererInfo) {
-    console.log(`  renderer.info: drawCalls=${r.rendererInfo.calls} triangles=${r.rendererInfo.triangles} geometries=${r.rendererInfo.geometries} textures=${r.rendererInfo.textures}`);
-  }
-  if (r.consoleErrors.length) console.log(`  콘솔 에러: ${JSON.stringify(r.consoleErrors)}`);
-  console.log('');
 }
 
-const anyFail = results.some((r) => r.loadTimedOut || !r.renderInfo?.pass || (r.dragInfo && !r.dragInfo.rotated) || !r.preClick.hasNotice);
-console.log(anyFail ? '일부 항목 FAIL — 위 상세 참고 (조이스틱 등 기능 추가는 이 스크립트 범위 밖, 현황 보고만)' : '전부 OK');
-// 현황 파악이 목적이라 exit 1로 파이프라인을 막지 않는다 — 정보성 스크립트.
-process.exit(0);
+const allPass = results.every((r) => !r.loadTimedOut && r.renderInfo?.pass && r.joystickInfo?.visible && r.moveInfo?.moved && r.simulInfo?.simulOk) && !desktopJoystick.visible && !desktopNotice;
+
+if (allPass) {
+  console.log('\n모든 모바일 뷰포트 및 데스크톱 검증 통과!');
+  process.exit(0);
+} else {
+  console.error('\n일부 항목 검증 실패');
+  process.exit(1);
+}
+

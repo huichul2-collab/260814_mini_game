@@ -6,7 +6,7 @@ import { OPENING_CONFIG } from '../../config.js';
  * 터치 기기 감지 — pointer:coarse 미디어쿼리 우선, 지원 안 하는 구형
  * 브라우저는 navigator.maxTouchPoints로 폴백.
  */
-function isTouchDevice() {
+export function isTouchDevice() {
   if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return true;
   return (navigator.maxTouchPoints || 0) > 0;
 }
@@ -35,13 +35,11 @@ export function initAudioGate(loadingEl, onStart) {
   container.textContent = '';
   container.appendChild(statusEl);
 
-  // 모바일/터치 기기 안내 — player/input.js는 키보드 전용이라 터치로는
-  // 캐릭터가 전혀 안 움직인다. 지인 피드백용이라 폰으로 여는 사람이
-  // 많을 수 있어 미리 알린다(막지는 않음 — 그래도 눌러볼 수는 있게).
+  // 모바일/터치 기기 안내 — 조이스틱 이동 및 터치 시점 조작 안내.
   if (isTouchDevice()) {
     const mobileNotice = document.createElement('div');
     mobileNotice.id = 'mobile-notice';
-    mobileNotice.textContent = '이 게임은 키보드가 필요합니다 — PC에서 열어주세요';
+    mobileNotice.textContent = '이동은 화면 왼쪽 조이스틱, 시점은 오른쪽 드래그 (퍼즐 입력은 키보드가 편리합니다)';
     Object.assign(mobileNotice.style, {
       marginTop: '10px',
       fontSize: '12px',
