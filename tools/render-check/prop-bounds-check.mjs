@@ -295,28 +295,27 @@ console.log('');
 console.log('로그:', logs.length ? logs : '없음');
 console.log('');
 
-// M9-C 배치1(2026-08-22): 이 숫자는 "소품 개수"가 아니다. 이 스크립트는
-// 중첩된 THREE.Group도 자기 지오메트리 박스가 비어있지 않으면 각각 별도
-// 항목으로 센다(위 순회 로직 참고). furniture.js 최상위 항목은 23개(거실
-// 10 + 공방 4 + 서재 8 + 보관소 1)인데, 두 조형이 내부에 이름 있는 하위
-// 그룹을 더 갖고 있어 그만큼 더 잡힌다:
+// M9-C 배치1 보완(2026-08-22): 이 숫자는 "소품 개수"가 아니다. 이
+// 스크립트는 중첩된 THREE.Group도 자기 지오메트리 박스가 비어있지
+// 않으면 각각 별도 항목으로 센다(위 순회 로직 참고). furniture.js
+// 최상위 항목은 30개(거실 10 + 공방 8 + 서재 8 + 보관소 4)인데, 세
+// 조형이 내부에 이름 있는/지오메트리를 직접 가진 하위 그룹을 더
+// 갖고 있어 그만큼 더 잡힌다:
 //   - 거실 시계: hourHand/minuteHand 피벗 그룹 2개(handsGroup 자체는
-//     자기 지오메트리가 없어 빈 박스로 걸러짐)
+//     자기 지오메트리가 없어 빈 박스로 걸러짐) → +2
 //   - 보관소 기계장치: 서랍(drawer) 그룹 1개 + 그 안의 열쇠조각3
 //     (keyPiece3) 그룹 1개 — keyPiece3는 furniture.js 항목이 아니라
-//     machine.js가 만드는 자식이다(§11.2, "서랍 안에 있으므로 별도
-//     furniture.js 항목이 아니라 machine 조형의 자식")
-// 23 + 2(시계) + 2(기계장치) = 27 — 공교롭게도 M9-B 시점과 총합이 같다
-// (그때는 25 + 2였다: 침실 가구 10개 삭제, 신규 8개 추가로 최상위가
-// 25→23으로 줄고, 기계장치의 하위 그룹 2개가 새로 생겨 정확히 상쇄됨).
-// 문 잠금 패널(lock_D2)은 roomsMap 그룹 밖(scene에 직접 추가)이라 이
-// 집계에 안 잡힌다.
-const EXPECTED_PROP_NODES = 27;
+//     machine.js가 만드는 자식이다(§11.2) → +2
+//   - 보관소 상자 더미(crateStack): 그 자신은 자기 지오메트리가 없어
+//     빈 박스로 걸러지지만, 안에 든 상자 2개(bottom/top)는 각자
+//     지오메트리가 있어 개별 집계됨 → 항목 1개가 2개로 바뀌어 순증 +1
+// 30 + 2(시계) + 2(기계장치) + 1(상자 더미) = 35.
+const EXPECTED_PROP_NODES = 35;
 if (results.length !== EXPECTED_PROP_NODES) {
   console.error(`FAIL: 소품/하위노드 총 개수 오차 — 기대값 ${EXPECTED_PROP_NODES}개, 실제 ${results.length}개`);
   process.exit(1);
 }
 
-console.log(`OK   소품/하위노드 총 개수 ${results.length}개 정확히 일치(furniture.js 최상위 23개 + 시계 하위 2개 + 기계장치 하위 2개)`);
+console.log(`OK   소품/하위노드 총 개수 ${results.length}개 정확히 일치(furniture.js 최상위 30개 + 시계 하위 2개 + 기계장치 하위 2개 + 상자더미 순증 1개)`);
 console.log(warnings === 0 ? '경고 없음' : `경고 ${warnings}건 — 최종 판단은 사람이 할 것`);
 process.exit(0);
