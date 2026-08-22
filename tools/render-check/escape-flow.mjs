@@ -636,7 +636,8 @@ console.log('\n--- 12-A. 공구상자 클릭 → 파이프렌치 획득 ---');
 // 열려 있는지가 검증 대상이다(잠금 로직이 한쪽 방향만 확인하고 있었다면
 // 여기서 잡힌다).
 console.log('\n--- 12-B. 실제 도보 귀환: 공방 → 거실 → 서재 ---');
-const backToLiving = await walkToward({ x: 0, z: 0 }, 6000);
+await walkToward({ x: -0.9, z: -3.6 }, 3000); // D1 개구부 앞 경유점 (작업대 모서리 우회)
+const backToLiving = await walkToward({ x: 0, z: 0 }, 4000);
 check(
   '공방에서 거실로 실제 도보 복귀(D1 역방향 통과)',
   Math.abs(backToLiving.x) < 3 && Math.abs(backToLiving.z) < 3,
