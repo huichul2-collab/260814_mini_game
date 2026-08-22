@@ -94,7 +94,29 @@ export const OBJECTS = {
   'bedB.cabinet': { name: '캐비닛', text: '오래된 캐비닛이다.' },
   'bedB.crateStack': { name: '상자 더미', text: '아무렇게나 쌓아둔 상자들이다.' },
   'bedB.oldRug': { name: '낡은 러그', text: '빛바랜 러그다.' },
+
+  // M9-E(E-3, §12.4) — E-1의 variants를 실전에서 처음 쓰는 자리. 파이프렌치
+  // 미보유/보유 두 상태만 있고 둘 다 여기서 끝난다(개봉·스크랩 열람 같은
+  // 부수효과는 텍스트가 아니라 상태 변화라 variants가 못 맡는다 — 그건
+  // interaction/probe.js가 found.id === 'study.cabinet'로 직접 처리한다,
+  // machine.js 서랍 열기와 같은 패턴).
+  'study.cabinet': {
+    name: '캐비닛',
+    variants: [
+      { requires: { items: ['pipe_wrench'] }, text: '파이프렌치로 자물쇠를 부쉈다. 안에 신문 스크랩이 있다.' },
+      { text: '잠겨 있다. 열쇠 구멍이 낡아 열쇠로도 열리지 않을 것 같다.' }, // 조건 없음 = 기본
+    ],
+  },
 };
+
+// M9-E(E-3, §12.7) — 캐비닛 개봉 후 열람 UI(ui/clippingsModal.js)가 그대로
+// 읽어 보여주는 신문 스크랩 3장. 다이얼 퍼즐(§12.6, E-4)의 단서이기도
+// 하다 — ②만 정답(좌3·우4·좌1), ①③은 함정. 문안은 §12.7 표 그대로.
+export const NEWS_CLIPPINGS = [
+  '주가가 3년 만에 최고치를 경신, 지수 3000 시대를 열었다.',
+  '한 회에 홈런 3개. 첫 홈런은 왼쪽 담장을 넘겨 3득점, 다음은 오른쪽 담장을 넘긴 만루 홈런 4득점, 마지막은 왼쪽 담장을 넘긴 솔로 홈런.',
+  '연쇄 살인사건, 마지막 사건 발생 이후 13일째. 미궁에 빠진 수사.',
+];
 
 // M9-C 배치2: 인벤토리 아이템 6종(§4). icon은 이모지만 쓴다(§5 — 이미지
 // 파일 금지, 무빌드·오프라인 원칙). key_piece_1~3은 이름이 같지만
@@ -107,6 +129,9 @@ export const ITEMS = {
   key_piece_2: { name: '열쇠 조각', icon: '🧩', desc: '열쇠의 일부로 보이는 금속 조각. 공방에서 찾았다.' },
   key_piece_3: { name: '열쇠 조각', icon: '🧩', desc: '열쇠의 일부로 보이는 금속 조각. 보관소에서 찾았다.' },
   front_key: { name: '현관 열쇠', icon: '🔑', desc: '조각 세 개를 조립해 완성한 열쇠. 현관문에 맞을 것 같다.' },
+  // M9-E(E-3, §12.5·§12.8) — 공방 공구상자에서 획득. 서재 캐비닛(§12.4)을
+  // 여는 유일한 방법이다.
+  pipe_wrench: { name: '파이프렌치', icon: '🔧', desc: '녹슨 파이프렌치. 낡은 자물쇠 정도는 부술 수 있을 것 같다.' },
 };
 
 // M9-C 배치2: 문 4개 전부 잠근다(§10.1 예고대로 M9-B는 D2 하나였다).
@@ -189,6 +214,19 @@ export const OBJECT_PUZZLES = {
     successText: '조각 세 개를 끼우자 열쇠가 완성됐다.',
     alreadyText: '이미 조립을 마쳤다.',
     rewardItems: ['front_key'],
+  },
+  // M9-E(E-3, §12.5) — requiredItems가 빈 배열이라 처음 클릭하면 바로
+  // 지급된다(잠금 단계 없음, "공구상자: 획득 전 → ... 획득 후 → ..."
+  // 두 단계뿐). rewardItems가 비어 있으면 안 된다 — probe.js의 "이미
+  // 풀었는가" 판정(rewardItems.every(...))이 빈 배열에서 항상 참이 돼
+  // 매 클릭이 alreadyText로 새는 버그가 난다(실제로 이 순서로 짜봤다가
+  // 잡음, 그래서 캐비닛은 이 테이블을 안 쓰고 probe.js에서 직접 처리한다).
+  'bedA.toolbox': {
+    requiredItems: [],
+    missingText: '', // requiredItems가 비어 있어 이 분기는 절대 안 탄다(방어적으로만 존재)
+    successText: '낡은 공구들이 가득하다.',
+    alreadyText: '쓸 만한 건 다 꺼냈다.',
+    rewardItems: ['pipe_wrench'],
   },
 };
 

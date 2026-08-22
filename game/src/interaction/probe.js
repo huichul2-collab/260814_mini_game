@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import { TAG } from '../core/tags.js';
 import { INTERACTION_CONFIG } from '../../config.js';
-import { OBJECTS, LOCKS, PUZZLES, ITEMS, OBJECT_PUZZLES } from '../../story.js';
+import { OBJECTS, LOCKS, PUZZLES, ITEMS, OBJECT_PUZZLES, NEWS_CLIPPINGS } from '../../story.js';
 import { showDialogue } from '../ui/dialogue.js';
 import { showKeypadModal } from '../ui/modal.js';
 import { showPaperModal } from '../ui/paperModal.js';
-import { markInspected, isDoorUnlocked, unlockDoor, getInventory, addItem, hasFlag, incrementVisit } from '../story/state.js';
+import { showClippingsModal } from '../ui/clippingsModal.js';
+import { markInspected, isDoorUnlocked, unlockDoor, getInventory, addItem, hasFlag, setFlag, incrementVisit } from '../story/state.js';
 import { rebuildFrom } from '../physics/colliders.js';
 import { onFrame } from '../core/loop.js';
 
@@ -85,6 +86,15 @@ function openMachineDrawer(machineGroup) {
     t = Math.min(t + dt, duration);
     drawer.position.z = startZ + (targetZ - startZ) * (t / duration);
   });
+}
+
+// M9-E(E-3) — 서재 캐비닛(§12.4) 개봉. variants(story.js)가 이미 텍스트
+// 전환을 맡고 있으니 여기서는 "실제로 열렸는지"에 딸린 부수효과(신문
+// 스크랩 자식 보이기 + flag + 열람 UI)만 처리한다 — machine.js 서랍
+// 열기와 같은 급의 id 하드코딩 분기다(§12.2가 커버 못 하는 부분).
+function revealNewsClippings(cabinetGroup) {
+  const clippings = cabinetGroup.getObjectByName('newsClippings');
+  if (clippings) clippings.visible = true;
 }
 
 export function initProbe(scene, camera, renderer, player) {
@@ -280,6 +290,17 @@ export function initProbe(scene, camera, renderer, player) {
       if (grantMsg) text = `${text} ${grantMsg}`;
     }
     showDialogue(entry.name, text);
+    // M9-E(E-3, §12.4) — 파이프렌치를 갖고 캐비닛을 클릭한 순간이 곧
+    // "열었다"다(별도 확인 입력 없음). 처음 여는 순간에만 flag를 세우고
+    // 자식을 드러내지만, 열람 UI는 그 뒤로도 클릭할 때마다 다시 연다
+    // (한 번 보고 닫으면 다시 볼 방법이 없어지면 안 된다).
+    if (found.id === 'study.cabinet' && getInventory().includes('pipe_wrench')) {
+      if (!hasFlag('cabinet_opened')) {
+        setFlag('cabinet_opened');
+        revealNewsClippings(found.obj);
+      }
+      showClippingsModal({ clippings: NEWS_CLIPPINGS });
+    }
     markInspected(found.id);
   }
 

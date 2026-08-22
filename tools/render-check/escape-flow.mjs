@@ -13,7 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer-core';
-import { CLOCK_TIME, PUZZLES, ENDING_TEXT, OBJECTS } from '../../game/story.js';
+import { CLOCK_TIME, PUZZLES, ENDING_TEXT, OBJECTS, NEWS_CLIPPINGS } from '../../game/story.js';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const gameDir = path.resolve(process.argv[2] || path.join(scriptDir, '..', '..', 'game'));
@@ -224,6 +224,14 @@ async function isDoorUnlocked(doorId) {
     const state = await import('./src/story/state.js');
     return state.isDoorUnlocked(doorId);
   }, doorId);
+}
+
+// M9-E(E-3) — 캐비닛 개봉 flag(story.js 'cabinet_opened') 확인용.
+async function hasStoryFlag(flagId) {
+  return page.evaluate(async (flagId) => {
+    const state = await import('./src/story/state.js');
+    return state.hasFlag(flagId);
+  }, flagId);
 }
 
 // ---------- 2. 시계 바늘 각도 부호 검증 ----------
@@ -529,6 +537,34 @@ console.log('\n--- 9-A. 알 수 없는 기계 조사(열쇠조각 1개 이상) -
   await sleep(1200);
 }
 
+// ---------- 9-B. 서재 캐비닛 조사(파이프렌치 미보유) — variants 잠김 상태 ----------
+// M9-E(E-3, §12.4) — variants가 실전에서 처음 쓰이는 자리(§12 도입부).
+// 아직 공방에 안 가봐서 pipe_wrench가 없다 — 잠긴 문구만 뜨고 flag는
+// 안 선다.
+console.log('\n--- 9-B. 서재 캐비닛 조사(파이프렌치 미보유) ---');
+{
+  const cabinetClick = await placeAndClick('study.cabinet', 1.0, 0);
+  if (check('캐비닛 클릭 좌표 계산', cabinetClick.ok, JSON.stringify(cabinetClick))) {
+    await page.mouse.click(cabinetClick.sx, cabinetClick.sy);
+    await sleep(200);
+    const dlg = await page.evaluate(() => {
+      const text = document.getElementById('dialogue-text');
+      return text ? text.textContent : null;
+    });
+    check(
+      '파이프렌치 미보유 상태에서 잠김 문구',
+      dlg === '잠겨 있다. 열쇠 구멍이 낡아 열쇠로도 열리지 않을 것 같다.',
+      `실제="${dlg}"`
+    );
+    const openedTooEarly = await hasStoryFlag('cabinet_opened');
+    check('아직 cabinet_opened flag가 안 섬', !openedTooEarly);
+    await page.evaluate(() => { const b = document.getElementById('dialogue-box'); if (b) b.click(); });
+    await sleep(350);
+  } else {
+    failures += 2;
+  }
+}
+
 // ---------- 10~12. D1(방향 자물쇠, P2) — 오답→정답→공방 진입 ----------
 console.log('\n--- 10. D1 패널 클릭 → 화살표 모달 ---');
 // 정면(offsetZ만)으로 접근하면 카메라 시선(기본 -Z)과 일직선이 되어
@@ -569,6 +605,99 @@ if (d1ModalStill) {
 } else {
   failures += 2;
   console.error('FAIL 12번 스킵 — 11번에서 모달이 이미 닫혀 있었음');
+}
+
+// ---------- 12-A. 공구상자 클릭 → 파이프렌치 획득 ----------
+console.log('\n--- 12-A. 공구상자 클릭 → 파이프렌치 획득 ---');
+{
+  const toolboxClick = await placeAndClick('bedA.toolbox', 0, 0.8);
+  if (check('공구상자 클릭 좌표 계산', toolboxClick.ok, JSON.stringify(toolboxClick))) {
+    await page.mouse.click(toolboxClick.sx, toolboxClick.sy);
+    await sleep(200);
+    const dlg = await page.evaluate(() => {
+      const text = document.getElementById('dialogue-text');
+      return text ? text.textContent : null;
+    });
+    check('공구상자 조사 대화창에 "얻었다" 문구 포함', dlg && dlg.includes('얻었다'), `text="${dlg}"`);
+    await page.evaluate(() => { const b = document.getElementById('dialogue-box'); if (b) b.click(); });
+    await sleep(350);
+    const inv = await getInventory();
+    check('인벤토리에 pipe_wrench 추가됨', inv.includes('pipe_wrench'), JSON.stringify(inv));
+  } else {
+    failures += 2;
+  }
+}
+
+// ---------- 12-B. 실제 도보 귀환: 공방 → 거실 → 서재(텔레포트 우회 없음) ----------
+// M9-E(E-3) — §12.1 "되돌아가기는 서재 1회뿐" 구간의 핵심 검증. 다른
+// 클릭 테스트처럼 placeAndClick으로 순간이동하지 않고, m4-rooms.mjs와
+// 같은 방식(walkToward, 키 입력 시뮬레이션)으로 D1→거실→D2를 실제로
+// 걸어서 통과한다 — 이미 풀린 자물쇠가 되돌아가는 방향으로도 진짜
+// 열려 있는지가 검증 대상이다(잠금 로직이 한쪽 방향만 확인하고 있었다면
+// 여기서 잡힌다).
+console.log('\n--- 12-B. 실제 도보 귀환: 공방 → 거실 → 서재 ---');
+const backToLiving = await walkToward({ x: 0, z: 0 }, 6000);
+check(
+  '공방에서 거실로 실제 도보 복귀(D1 역방향 통과)',
+  Math.abs(backToLiving.x) < 3 && Math.abs(backToLiving.z) < 3,
+  `실제(${backToLiving.x.toFixed(2)},${backToLiving.z.toFixed(2)})`
+);
+const backToStudy = await walkToward({ x: 5.0, z: 0.5 }, 6000);
+check(
+  '거실에서 서재로 실제 도보 재진입(D2 재통과, 텔레포트 우회 없음)',
+  backToStudy.x > 3,
+  `실제(${backToStudy.x.toFixed(2)},${backToStudy.z.toFixed(2)})`
+);
+
+// ---------- 12-C. 캐비닛 재조사(파이프렌치 보유) → 개봉 + 스크랩 3장 열람 ----------
+console.log('\n--- 12-C. 캐비닛 재조사(파이프렌치 보유) → 개봉 + 스크랩 열람 ---');
+{
+  const cabinetClick2 = await placeAndClick('study.cabinet', 1.0, 0);
+  if (check('캐비닛 재클릭 좌표 계산', cabinetClick2.ok, JSON.stringify(cabinetClick2))) {
+    await page.mouse.click(cabinetClick2.sx, cabinetClick2.sy);
+    await sleep(200);
+    const dlg = await page.evaluate(() => {
+      const text = document.getElementById('dialogue-text');
+      return text ? text.textContent : null;
+    });
+    check(
+      '파이프렌치 보유 상태에서 개봉 문구로 전환(variants)',
+      dlg === '파이프렌치로 자물쇠를 부쉈다. 안에 신문 스크랩이 있다.',
+      `실제="${dlg}"`
+    );
+    const opened = await hasStoryFlag('cabinet_opened');
+    check('cabinet_opened flag가 섬', opened);
+
+    const clippingsVisible = await page.evaluate(() => {
+      let cabinet = null;
+      window.__debug.scene.traverse((o) => {
+        if (!cabinet && o.userData && o.userData['interactive'] === 'study.cabinet') cabinet = o;
+      });
+      const clippings = cabinet ? cabinet.getObjectByName('newsClippings') : null;
+      return clippings ? clippings.visible : null;
+    });
+    check('개봉 후 신문 스크랩 자식이 실제로 보임(visible=true)', clippingsVisible === true, `clippingsVisible=${clippingsVisible}`);
+
+    // 스크랩 3장을 페이지 넘기며 순서대로 확인 — story.js NEWS_CLIPPINGS와
+    // 문안이 그대로 일치해야 한다(정답/함정을 여기서 새로 베끼지 않는다).
+    const page1 = await page.evaluate(() => document.getElementById('modal-clipping-text')?.textContent || null);
+    check('스크랩 1장 문안 일치', page1 === NEWS_CLIPPINGS[0], `실제="${page1}"`);
+    await page.click('#modal-clipping-next');
+    await sleep(100);
+    const page2 = await page.evaluate(() => document.getElementById('modal-clipping-text')?.textContent || null);
+    check('스크랩 2장 문안 일치(정답 단서)', page2 === NEWS_CLIPPINGS[1], `실제="${page2}"`);
+    await page.click('#modal-clipping-next');
+    await sleep(100);
+    const page3 = await page.evaluate(() => document.getElementById('modal-clipping-text')?.textContent || null);
+    check('스크랩 3장 문안 일치', page3 === NEWS_CLIPPINGS[2], `실제="${page3}"`);
+
+    await page.click('#modal-close');
+    await sleep(150);
+    const modalClosedAfterRead = await page.evaluate(() => !document.getElementById('modal-overlay'));
+    check('열람 UI가 닫힘', modalClosedAfterRead);
+  } else {
+    failures += 5;
+  }
 }
 
 // ---------- 13. 공방 백지 조사 → P3 단서 팝업(UV 랜턴 보유 상태) ----------

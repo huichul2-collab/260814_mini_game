@@ -10,7 +10,7 @@
  *              'studyDesk', 'officeChair', 'largeBookshelf', 'armchair',
  *              'teaTable', 'rectRug', 'diary', 'keyPiece', 'workbench',
  *              'blankPaper', 'acrylicPanel', 'machine', 'shelf', 'toolbox',
- *              'crate', 'crateStack', 'cabinet', 'oldRug')
+ *              'crate', 'crateStack', 'cabinet', 'lockedCabinet', 'oldRug')
  *    - pos   : 월드 좌표 [X, Y, Z] (단위: 미터)
  *    - rotY  : Y축 수평 회전각 (단위: 라디안, 기본값: 0)
  * ------------------------------------------------------------------ */
@@ -61,4 +61,11 @@ export const FURNITURE = [
   { id: 'bedB.cabinet', room: 'bedB', type: 'cabinet', pos: [-1.69, 0, 6.15], rotY: Math.PI / 2 },
   { id: 'bedB.crateStack', room: 'bedB', type: 'crateStack', pos: [1.03, 0, 4.28], rotY: 0 },
   { id: 'bedB.oldRug', room: 'bedB', type: 'oldRug', pos: [0, 0.01, 5.0], rotY: 0 },
+
+  // ---------- M9-E E-3 신규(§12.4) — 배열 끝에 추가(gemini/lane-traps와 충돌 회피) ----------
+  // 서재 서벽(D2 개구부 남쪽 세그먼트)에 밀착 배치. 기존 가구 6개(desk/
+  // chair/bookshelf/armchair/teaTable/rug) 전부와 0.44m 이상 이격, D2
+  // 개구부(X[2.85,3.15] Z[-0.15,1.15])와도 안 겹친다 — prop-bounds-check로
+  // 확인함(§12.4 "내가 좌표를 찍었다가 0.115m 죽은 주머니를 만든 전례").
+  { id: 'study.cabinet', room: 'study', type: 'lockedCabinet', pos: [3.26, 0, 1.425], rotY: Math.PI / 2 },
 ];

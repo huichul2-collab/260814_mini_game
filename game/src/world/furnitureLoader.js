@@ -19,7 +19,7 @@ import { makeKeyPiece } from './props/keyPiece.js';
 import { makeShelf } from './props/shelf.js';
 import { makeToolbox } from './props/toolbox.js';
 import { makeCrate, makeCrateStack } from './props/crate.js';
-import { makeCabinet } from './props/cabinet.js';
+import { makeCabinet, makeLockedCabinet } from './props/cabinet.js';
 
 const PROP_BUILDERS = {
   desk: (item) => makeDesk(item.id),
@@ -53,6 +53,7 @@ const PROP_BUILDERS = {
   crate: (item) => makeCrate(item.id),
   crateStack: (item) => makeCrateStack(item.id),
   cabinet: (item) => makeCabinet(item.id),
+  lockedCabinet: (item) => makeLockedCabinet(item.id),
   oldRug: (item) => makeOldRug(item.id),
 };
 
