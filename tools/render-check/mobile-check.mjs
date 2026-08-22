@@ -239,7 +239,7 @@ for (const vp of VIEWPORTS) {
       };
     }
     // ---------- (e) 가상 조이스틱 표시 검사 ----------
-    const joystickInfo = await page.evaluate(() => {
+    joystickInfo = await page.evaluate(() => {
       const el = document.getElementById('virtual-joystick-container');
       const knob = document.getElementById('virtual-joystick-knob');
       const base = document.getElementById('virtual-joystick-base');
@@ -257,7 +257,7 @@ for (const vp of VIEWPORTS) {
     });
 
     // ---------- (f) 조이스틱 터치 드래그로 캐릭터 실제 이동 검증 ----------
-    let moveInfo = null;
+    moveInfo = null;
     if (joystickInfo.visible) {
       const posBefore = await page.evaluate(() => {
         const p = window.__debug?.player?.root?.position;
@@ -303,7 +303,7 @@ for (const vp of VIEWPORTS) {
     }
 
     // ---------- (g) 조이스틱 + 우측 시점회전 동시 입력 검증 ----------
-    let simulInfo = null;
+    simulInfo = null;
     if (joystickInfo.visible) {
       const yawBeforeSim = await page.evaluate(() => window.__debug?.followCam?.getYaw?.() ?? 0);
       const posBeforeSim = await page.evaluate(() => {
