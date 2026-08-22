@@ -11,6 +11,12 @@ let baseCenterY = 0;
 const currentAxis = { x: 0, z: 0 };
 let isInitialized = false;
 
+function isModalOpen() {
+  if (typeof document === 'undefined') return false;
+  const overlay = document.getElementById('modal-overlay');
+  return !!overlay && overlay.style.display !== 'none' && overlay.style.visibility !== 'hidden';
+}
+
 function shouldShow() {
   if (JOYSTICK_CONFIG.mode === 'off') return false;
   if (JOYSTICK_CONFIG.mode === 'on') return true;
@@ -65,6 +71,7 @@ function resetJoystick() {
 }
 
 function handleTouchStart(e) {
+  if (isModalOpen()) return;
   if (activeTouchId !== null) return;
   const touches = e.changedTouches ? Array.from(e.changedTouches) : [e];
   const maxLeftX = window.innerWidth * (JOYSTICK_CONFIG.leftZoneRatio || 0.40);
@@ -213,5 +220,9 @@ export function ensureJoystick() {
 
 export function getJoystickAxis() {
   ensureJoystick();
+  if (isModalOpen()) {
+    if (activeTouchId !== null) resetJoystick();
+    return { x: 0, z: 0 };
+  }
   return currentAxis;
 }

@@ -144,6 +144,7 @@ for (const vp of VIEWPORTS) {
   let joystickInfo = null;
   let moveInfo = null;
   let simulInfo = null;
+  let modalSuppression = null;
 
   if (!loadTimedOut) {
     const btnBox = await page.evaluate(() => {
@@ -356,11 +357,63 @@ for (const vp of VIEWPORTS) {
         }
       }
     }
+
+    // ---------- (h) 모달 표시 중 조이스틱 입력 억제 검증 (다이얼 모달 등) ----------
+    modalSuppression = null;
+    if (joystickInfo.visible) {
+      await page.evaluate(async () => {
+        const { showKeypadModal } = await import('./src/ui/modal.js');
+        showKeypadModal({ type: 'dial', promptText: '다이얼 테스트', answer: 'L3R4L1', wrongText: '틀림' });
+      });
+      await sleep(200);
+
+      const modalOpen = await page.evaluate(() => !!document.getElementById('modal-overlay'));
+      const posBeforeModalMove = await page.evaluate(() => {
+        const p = window.__debug?.player?.root?.position;
+        return p ? { x: p.x, z: p.z } : null;
+      });
+
+      const baseCenter = await page.evaluate(() => {
+        const base = document.getElementById('virtual-joystick-base');
+        if (!base) return null;
+        const r = base.getBoundingClientRect();
+        return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      });
+
+      if (modalOpen && baseCenter && posBeforeModalMove) {
+        const mTouch = await page.touchscreen.touchStart(baseCenter.x, baseCenter.y);
+        await mTouch.move(baseCenter.x, baseCenter.y - 45);
+        await sleep(300);
+        await mTouch.end();
+        await sleep(100);
+
+        const posAfterModalMove = await page.evaluate(() => {
+          const p = window.__debug?.player?.root?.position;
+          return p ? { x: p.x, z: p.z } : null;
+        });
+        const axisDuringModal = await page.evaluate(() => window.__debug?.joystick?.getAxis?.() ?? { x: 0, z: 0 });
+
+        await page.evaluate(() => {
+          const closeBtn = document.getElementById('modal-close');
+          if (closeBtn) closeBtn.click();
+        });
+        await sleep(200);
+
+        const distDuringModal = posAfterModalMove ? Math.hypot(posAfterModalMove.x - posBeforeModalMove.x, posAfterModalMove.z - posBeforeModalMove.z) : 0;
+        modalSuppression = {
+          modalOpen,
+          axisX: axisDuringModal.x,
+          axisZ: axisDuringModal.z,
+          distDuringModal,
+          suppressed: Math.abs(axisDuringModal.x) < 0.001 && Math.abs(axisDuringModal.z) < 0.001 && distDuringModal < 0.05,
+        };
+      }
+    }
   }
 
   results.push({
     vp, loadTimedOut, preClick, postClickRects, dragInfo, renderInfo, canvasRes, rendererInfo,
-    joystickInfo, moveInfo, simulInfo, consoleErrors,
+    joystickInfo, moveInfo, simulInfo, modalSuppression, consoleErrors,
   });
   await page.close();
 }
@@ -436,8 +489,8 @@ for (const r of results) {
 
 // ---------- 표 출력 ----------
 console.log('\n=== 모바일 가상 조이스틱 및 터치 검증 결과 ===\n');
-console.log('| 뷰포트 | (a)렌더성공 | (b)시점회전 | (c)안내표시 | (d)조이스틱표시 | (e)조이스틱이동 | (f)동시입력 |');
-console.log('|---|---|---|---|---|---|---|');
+console.log('| 뷰포트 | (a)렌더성공 | (b)시점회전 | (c)안내표시 | (d)조이스틱표시 | (e)조이스틱이동 | (f)동시입력 | (g)모달입력억제 |');
+console.log('|---|---|---|---|---|---|---|---|');
 for (const r of results) {
   const a = r.loadTimedOut ? 'FAIL(타임아웃)' : (r.renderInfo?.pass ? 'OK' : 'FAIL');
   const b = r.dragInfo ? `${r.dragInfo.deltaRad.toFixed(3)}rad(${r.dragInfo.deltaDeg.toFixed(1)}°)` : 'N/A';
@@ -445,7 +498,8 @@ for (const r of results) {
   const d = r.joystickInfo?.visible ? 'OK' : 'FAIL';
   const e = r.moveInfo?.moved ? `OK (${r.moveInfo.distMoved.toFixed(2)}m)` : 'FAIL';
   const f = r.simulInfo?.simulOk ? 'OK' : 'FAIL';
-  console.log(`| ${r.vp.label} | ${a} | ${b} | ${c} | ${d} | ${e} | ${f} |`);
+  const g = r.modalSuppression?.suppressed ? 'OK' : 'FAIL';
+  console.log(`| ${r.vp.label} | ${a} | ${b} | ${c} | ${d} | ${e} | ${f} | ${g} |`);
 }
 
 console.log('\n--- 데스크톱(960x600) 비터치 환경 검사 ---');
@@ -467,6 +521,9 @@ for (const r of results) {
   if (r.simulInfo) {
     console.log(`  동시 입력(조이스틱 이동+카메라 회전): Δyaw=${r.simulInfo.yawDelta.toFixed(3)}rad, dist=${r.simulInfo.distSim.toFixed(3)}m → ${r.simulInfo.simulOk ? 'OK' : 'FAIL'}`);
   }
+  if (r.modalSuppression) {
+    console.log(`  모달 표시 중 입력 억제: axis=(${r.modalSuppression.axisX.toFixed(2)},${r.modalSuppression.axisZ.toFixed(2)}), 이동=${r.modalSuppression.distDuringModal.toFixed(3)}m → ${r.modalSuppression.suppressed ? 'OK' : 'FAIL'}`);
+  }
   if (r.dragInfo) {
     console.log(`  우측 시점 회전: Δyaw=${r.dragInfo.deltaRad.toFixed(4)}rad (${r.dragInfo.deltaDeg.toFixed(1)}°)`);
   }
@@ -475,7 +532,7 @@ for (const r of results) {
   }
 }
 
-const allPass = results.every((r) => !r.loadTimedOut && r.renderInfo?.pass && r.joystickInfo?.visible && r.moveInfo?.moved && r.simulInfo?.simulOk) && !desktopJoystick.visible && !desktopNotice;
+const allPass = results.every((r) => !r.loadTimedOut && r.renderInfo?.pass && r.joystickInfo?.visible && r.moveInfo?.moved && r.simulInfo?.simulOk && r.modalSuppression?.suppressed) && !desktopJoystick.visible && !desktopNotice;
 
 if (allPass) {
   console.log('\n모든 모바일 뷰포트 및 데스크톱 검증 통과!');
