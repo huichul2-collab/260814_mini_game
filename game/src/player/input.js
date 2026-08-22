@@ -42,6 +42,8 @@ window.addEventListener(
   { capture: true }
 );
 
+import { getJoystickAxis } from '../ui/joystick.js';
+
 export function getMoveAxis() {
   let x = 0;
   let z = 0;
@@ -49,9 +51,14 @@ export function getMoveAxis() {
   if (keys.has('KeyS') || keys.has('ArrowDown')) z += 1;
   if (keys.has('KeyA') || keys.has('ArrowLeft')) x -= 1;
   if (keys.has('KeyD') || keys.has('ArrowRight')) x += 1;
-  return { x, z };
+
+  const joy = getJoystickAxis();
+  const combinedX = Math.max(-1, Math.min(1, x + joy.x));
+  const combinedZ = Math.max(-1, Math.min(1, z + joy.z));
+  return { x: combinedX, z: combinedZ };
 }
 
 export function isJumpPressed() {
   return keys.has('Space');
 }
+
