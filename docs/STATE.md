@@ -2,7 +2,7 @@
 
 > 60줄 유지. 서술 금지, 상태만. 세션 끝에 **Claude Code CLI / Antigravity가 갱신**한다.
 > 배경/경위가 필요하면 `handoff-2026-08-15.md`, 전체 로그는 `dev-log.md`.
-> 최종 갱신: 2026-08-23 — M9-E 완료(variants 조건부 설명, 캐비닛+스크랩, 다이얼 P4+UV 연동). gemini/lane-joystick merge(모바일 가상 조이스틱, 모달 표시 중 입력 억제) 완료, `mobile-check.mjs` 전부 통과. ⚠️ `escape-flow.mjs` step 12-B(공방→거실→서재 도보 귀환)는 비결정적 — main에서 3연속 실행 시 1/3 실패, walkToward가 도착 확인 없이 고정 시간만 이동해 타이밍에 따라 갈린다(구조적 한계, 코드 주석 참고)
+> 최종 갱신: 2026-08-23 — M9-E 완료, 조이스틱 merge 완료, visual baseline 갱신(visual-diff 4/4 PASS), escape-flow 상태기반 walkToward 전환으로 12-B 결정성 확보(10/10 PASS).
 
 ## 3층 운영규칙
 
@@ -23,6 +23,8 @@
 8. **1층은 `docs/spec/*.md`를 직접 작성한다. 단 2층이 작업 중이 아닐 때만 쓰고, 커밋은 2층이 한다.**
 9. **검증 스크립트는 판정 하나만 맡는다.** 허용오차 판정과 정확 일치 판정을 섞지 않는다.
 10. **검증 기준(baseline)은 검사 대상과 독립된 출처에서 만든다.**
+11. **동시에 두 세션이 같은 저장소에 커밋하지 않는다.** 작업 시작 전 `git log --oneline -1`로 다른 세션의 진행을 확인한다.
+12. **N회 통과는 결정성의 증거가 아니다.** 비결정 의심 시 확률을 낮추지 말고 종료 조건 자체를 고친다(시간 기반 → 상태 기반).
 
 ## 마일스톤
 
@@ -33,7 +35,7 @@
 | M5 배포 (itch.io) | 🟡 **배포 도구 준비됨** — `docs/deploy.md`+`tools/make-dist.mjs` |
 | M6 증식 (오디오 시스템 ✅ 에셋 완료 / 소품) | 🟡 |
 | M9-A/B/C 방탈출 기반·퍼즐 P1~P5·엔딩 | ✅ 완료 — `interaction-check` 6/6, `escape-flow` 20/20 |
-| **M9-E 심화 퍼즐·단서 연계** (E1 variants, E2 서가, E3 캐비닛, E4 다이얼+UV) | ✅ 완료 — `escape-flow.mjs` 23/23 통과(단 12-B 비결정적, 위 참고) |
+| **M9-E 심화 퍼즐·단서 연계** (E1 variants, E2 서가, E3 캐비닛, E4 다이얼+UV) | ✅ 완료 — `escape-flow.mjs` 25/25 10회 연속 통과 |
 | 모바일 가상 조이스틱 (lane-joystick) | ✅ 완료 — 데스크톱 미표시·모달 입력 억제 포함 `mobile-check.mjs` 전부 통과 |
 | M9-D 오프닝 페이드인+대사+사운드 | 🔴 다음 작업 |
 | M7 폴리시 | 🔴 |
@@ -45,8 +47,6 @@
 3. **M5 배포 판단** — 사용자 몫, 도구까지 준비됨(`docs/deploy.md`)
 4. 벽 페이드 (`TAG.FADEABLE` 실제 투명도) — 2층, 문/창문 있는 벽 구조가 정립됨
 5. 카메라: `maxDistance` 8.0 이상 휠 줌아웃 시 일부 방 아티팩트 피치 튜닝
-6. `escape-flow.mjs` step 12-B 비결정성 근본 수정 — `walkToward`를 시간 기반이 아니라 목표 반경 도달 확인 방식으로 교체
-7. `tools/render-check/baseline/m4-*.png` 기준 이미지가 M9-E 이전 상태로 낡음 — `visual-diff.mjs` 4개 방 전부 FAIL 중, 사람이 새 기준으로 교체할 것
 
 ## 열린 결정 / 미확정
 

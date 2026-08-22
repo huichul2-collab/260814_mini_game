@@ -145,31 +145,75 @@ function dispatch(type, code) {
   return page.evaluate((t, c) => window.dispatchEvent(new KeyboardEvent(t, { code: c })), type, code);
 }
 
-async function walkToward(target, ms) {
+async function walkToward(target, maxMs = 5000, targetRadius = 0.3) {
   const held = new Set();
   async function setHeld(wanted) {
     for (const k of held) if (!wanted.has(k)) { await dispatch('keyup', k); held.delete(k); }
     for (const k of wanted) if (!held.has(k)) { await dispatch('keydown', k); held.add(k); }
   }
   const start = Date.now();
-  while (Date.now() - start < ms) {
-    const pos = await page.evaluate(() => {
-      const p = window.__debug.player.root.position;
-      return { x: p.x, z: p.z };
-    });
-    const dx = target.x - pos.x;
-    const dz = target.z - pos.z;
-    const wanted = new Set();
-    if (dx > 0.05) wanted.add('KeyD'); else if (dx < -0.05) wanted.add('KeyA');
-    if (dz > 0.05) wanted.add('KeyS'); else if (dz < -0.05) wanted.add('KeyW');
-    await setHeld(wanted);
-    await sleep(150);
+  const history = [];
+  let arrived = false;
+  let reason = 'timeout';
+  let finalPos = { x: 0, z: 0 };
+
+  try {
+    while (Date.now() - start < maxMs) {
+      const pos = await page.evaluate(() => {
+        const p = window.__debug?.player?.root?.position;
+        return p ? { x: p.x, z: p.z } : null;
+      });
+      if (!pos) {
+        await sleep(100);
+        continue;
+      }
+      finalPos = pos;
+
+      const dx = target.x - pos.x;
+      const dz = target.z - pos.z;
+      const dist = Math.hypot(dx, dz);
+
+      if (dist <= targetRadius) {
+        arrived = true;
+        reason = 'reached';
+        break;
+      }
+
+      history.push(pos);
+      if (history.length > 5) {
+        history.shift();
+        const oldPos = history[0];
+        const moved = Math.hypot(pos.x - oldPos.x, pos.z - oldPos.z);
+        if (moved < 0.03) {
+          arrived = false;
+          reason = 'stuck';
+          break;
+        }
+      }
+
+      const wanted = new Set();
+      if (dx > 0.05) wanted.add('KeyD'); else if (dx < -0.05) wanted.add('KeyA');
+      if (dz > 0.05) wanted.add('KeyS'); else if (dz < -0.05) wanted.add('KeyW');
+      await setHeld(wanted);
+      await sleep(150);
+    }
+  } finally {
+    await setHeld(new Set());
   }
-  await setHeld(new Set());
-  return page.evaluate(() => {
-    const p = window.__debug.player.root.position;
-    return { x: p.x, z: p.z };
-  });
+
+  const currentPos = (await page.evaluate(() => {
+    const p = window.__debug?.player?.root?.position;
+    return p ? { x: p.x, z: p.z } : null;
+  })) || finalPos;
+
+  return {
+    arrived,
+    reason,
+    pos: currentPos,
+    x: currentPos.x,
+    z: currentPos.z,
+    ms: Date.now() - start,
+  };
 }
 
 // 오브젝트 근처로 텔레포트 + 정면으로 마주보게 세팅 + 카메라 감쇠 수렴 대기 +
@@ -272,8 +316,8 @@ console.log('\n--- 3. 시작 시 서재 진입 불가 ---');
 const afterWalk = await walkToward({ x: 5.0, z: 0.5 }, 3000);
 check(
   '3초 이동해도 study 영역(X>3) 진입 실패',
-  afterWalk.x < 3,
-  `실제(${afterWalk.x.toFixed(2)},${afterWalk.z.toFixed(2)})`
+  !afterWalk.arrived && afterWalk.x < 3,
+  `실제(${afterWalk.x.toFixed(2)},${afterWalk.z.toFixed(2)}) reason=${afterWalk.reason}`
 );
 
 // ---------- 4. 시계 조사 → 대사에 시각 정보 ----------
@@ -351,8 +395,8 @@ if (modalStillThere) {
   const enteredStudy = await walkToward({ x: 5.0, z: 0.5 }, 6000);
   check(
     '정답 입력 후 실제로 걸어서 서재(X>3) 진입',
-    enteredStudy.x > 3,
-    `실제(${enteredStudy.x.toFixed(2)},${enteredStudy.z.toFixed(2)})`
+    enteredStudy.arrived && enteredStudy.x > 3,
+    `실제(${enteredStudy.x.toFixed(2)},${enteredStudy.z.toFixed(2)}) reason=${enteredStudy.reason}`
   );
 } else {
   failures += 2;
@@ -674,7 +718,11 @@ if (d1ModalStill) {
   const modalClosed = await page.evaluate(() => !document.getElementById('modal-overlay'));
   check('정답 입력 후 모달이 닫힘', modalClosed);
   const enteredBedA = await walkToward({ x: -1.5, z: -4.5 }, 6000);
-  check('정답 입력 후 실제로 걸어서 공방(Z<-3.3) 진입', enteredBedA.z < -3.3, `실제(${enteredBedA.x.toFixed(2)},${enteredBedA.z.toFixed(2)})`);
+  check(
+    '정답 입력 후 실제로 걸어서 공방(Z<-3.3) 진입',
+    enteredBedA.arrived && enteredBedA.z < -3.3,
+    `실제(${enteredBedA.x.toFixed(2)},${enteredBedA.z.toFixed(2)}) reason=${enteredBedA.reason}`
+  );
 } else {
   failures += 2;
   console.error('FAIL 12번 스킵 — 11번에서 모달이 이미 닫혀 있었음');
@@ -708,30 +756,26 @@ console.log('\n--- 12-A. 공구상자 클릭 → 파이프렌치 획득 ---');
 // 걸어서 통과한다 — 이미 풀린 자물쇠가 되돌아가는 방향으로도 진짜
 // 열려 있는지가 검증 대상이다(잠금 로직이 한쪽 방향만 확인하고 있었다면
 // 여기서 잡힌다).
-// ⚠️ 2026-08-23: 72a7d62(경유점 추가) 이후에도 비결정적으로 FAIL한다 —
-// main에서 3연속 실행 결과 1/3 실패, 2/3 통과. walkToward가 도착 여부를
-// 확인하지 않고 실시간(Date.now()) 기준 고정 ms 예산만큼만 키를 누르는
-// 구조라, 공방 작업대 모서리를 스치는 이 구간에서 헤드리스 크롬 프레임
-// 타이밍이 조금만 나빠지면(시스템 부하 등) 첫 구간에서 모서리에 걸려
-// 남은 예산으로 못 만회한다. 경유점 자체는 유효하지만 "고정 시간 이동"
-// 설계가 타이밍에 종속적이라 구조적으로 100% 결정적일 수 없다 —
-// walkToward를 "목표 반경 도달까지" 방식으로 바꾸지 않는 한 이 구간의
-// FAIL/PASS는 신뢰할 수 없다(KNOWN_FAILURES로 덮지 않고 여기 남겨둔다).
 console.log('\n--- 12-B. 실제 도보 귀환: 공방 → 거실 → 서재 ---');
-await walkToward({ x: -1.8, z: -5.8 }, 2000); // 작업대 좌측으로 이동
-await walkToward({ x: -1.8, z: -4.0 }, 2000); // 작업대 모서리 통과
-await walkToward({ x: -0.9, z: -3.6 }, 2000); // D1 개구부 앞 경유점
-const backToLiving = await walkToward({ x: 0, z: 0 }, 4000);
+const w1 = await walkToward({ x: -1.8, z: -5.8 }, 3000, 0.25); // 작업대 좌측으로 이동
+check('공방 작업대 좌측 경유점 도달', w1.arrived, `reason=${w1.reason} pos=(${w1.x.toFixed(2)},${w1.z.toFixed(2)})`);
+const w2 = await walkToward({ x: -1.8, z: -4.0 }, 3000, 0.25); // 작업대 모서리 통과
+check('공방 작업대 모서리 통과 경유점 도달', w2.arrived, `reason=${w2.reason} pos=(${w2.x.toFixed(2)},${w2.z.toFixed(2)})`);
+const w3 = await walkToward({ x: -0.6, z: -4.0 }, 3000, 0.25); // D1 개구부 정면 정렬 (공방 측)
+check('D1 개구부 정면 정렬 경유점 도달', w3.arrived, `reason=${w3.reason} pos=(${w3.x.toFixed(2)},${w3.z.toFixed(2)})`);
+const w4 = await walkToward({ x: -0.6, z: -1.5 }, 3000, 0.25); // D1 개구부 직진 통과 (거실 측)
+check('D1 개구부 직진 통과 경유점 도달', w4.arrived, `reason=${w4.reason} pos=(${w4.x.toFixed(2)},${w4.z.toFixed(2)})`);
+const backToLiving = await walkToward({ x: 0, z: 0 }, 5000, 0.3);
 check(
   '공방에서 거실로 실제 도보 복귀(D1 역방향 통과)',
-  Math.abs(backToLiving.x) < 3 && Math.abs(backToLiving.z) < 3,
-  `실제(${backToLiving.x.toFixed(2)},${backToLiving.z.toFixed(2)})`
+  backToLiving.arrived && Math.abs(backToLiving.x) < 3 && Math.abs(backToLiving.z) < 3,
+  `실제(${backToLiving.x.toFixed(2)},${backToLiving.z.toFixed(2)}) reason=${backToLiving.reason}`
 );
-const backToStudy = await walkToward({ x: 5.0, z: 0.5 }, 6000);
+const backToStudy = await walkToward({ x: 5.0, z: 0.5 }, 6000, 0.3);
 check(
   '거실에서 서재로 실제 도보 재진입(D2 재통과, 텔레포트 우회 없음)',
-  backToStudy.x > 3,
-  `실제(${backToStudy.x.toFixed(2)},${backToStudy.z.toFixed(2)})`
+  backToStudy.arrived && backToStudy.x > 3,
+  `실제(${backToStudy.x.toFixed(2)},${backToStudy.z.toFixed(2)}) reason=${backToStudy.reason}`
 );
 
 // ---------- 12-C. 캐비닛 재조사(파이프렌치 보유) → 개봉 + 스크랩 3장 열람 ----------
@@ -870,7 +914,11 @@ if (d3ModalOpen) {
   await dragYawBy(YAW_FLIP_DX); // 카메라 yaw 원상복구 — 이후 걷기는 yaw=0 기준
   await sleep(1200);
   const enteredBedB = await walkToward({ x: 0, z: 4.5 }, 6000);
-  check('정답 입력 후 실제로 걸어서 보관소(Z>3.3) 진입', enteredBedB.z > 3.3, `실제(${enteredBedB.x.toFixed(2)},${enteredBedB.z.toFixed(2)})`);
+  check(
+    '정답 입력 후 실제로 걸어서 보관소(Z>3.3) 진입',
+    enteredBedB.arrived && enteredBedB.z > 3.3,
+    `실제(${enteredBedB.x.toFixed(2)},${enteredBedB.z.toFixed(2)}) reason=${enteredBedB.reason}`
+  );
 } else {
   failures += 4;
   await dragYawBy(YAW_FLIP_DX); // 실패해도 yaw는 복구 — 이후 단계가 계속 깨지는 걸 막는다
@@ -989,7 +1037,11 @@ check('D4는 아이템 판정이라 키패드 모달을 안 띄움', !modalAfter
 // ---------- 19. 마당 진입 → 엔딩 대사(최종 완료 조건) ----------
 console.log('\n--- 19. 마당 진입 → 엔딩(시작→탈출 전 구간 클리어) ---');
 const enteredYard = await walkToward({ x: -5.0, z: 0 }, 9000);
-check('D4를 통과해 실제로 마당(YARD, X<-3) 진입', enteredYard.x < -3, `실제(${enteredYard.x.toFixed(2)},${enteredYard.z.toFixed(2)})`);
+check(
+  'D4를 통과해 실제로 마당(YARD, X<-3) 진입',
+  enteredYard.arrived && enteredYard.x < -3,
+  `실제(${enteredYard.x.toFixed(2)},${enteredYard.z.toFixed(2)}) reason=${enteredYard.reason}`
+);
 await sleep(200);
 const endingDlg = await page.evaluate(async () => {
   const state = await import('./src/story/state.js');
