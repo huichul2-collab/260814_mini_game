@@ -20,3 +20,8 @@ export function makeRectRug(id) {
 export function makeSquareRug(id) {
   return makeMesh(new THREE.BoxGeometry(1.3, 0.01, 1.3), 0x5a8fd1, null, [0, 0, 0], {}, id ? { interactive: id } : {});
 }
+
+// 낡은 러그 — 퍼즐과 무관한 순수 배경 소품(보관소). 빛바랜 색.
+export function makeOldRug(id) {
+  return makeMesh(new THREE.CylinderGeometry(0.85, 0.85, 0.01, 20), 0x8a7a5e, null, [0, 0, 0], {}, id ? { interactive: id } : {});
+}

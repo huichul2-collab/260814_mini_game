@@ -5,7 +5,7 @@ import { makeChair, makeOfficeChair } from './props/chair.js';
 import { makeBookshelf, makeLargeBookshelf } from './props/bookshelf.js';
 import { makePlant, makeLargePlant } from './props/plant.js';
 import { makeFrame, makePictureFrame } from './props/frame.js';
-import { makeRug, makeCushion, makeCircleRug, makeRectRug, makeSquareRug } from './props/rug.js';
+import { makeRug, makeCushion, makeCircleRug, makeRectRug, makeSquareRug, makeOldRug } from './props/rug.js';
 import { makeLamp } from './props/lamp.js';
 import { makeArmchair, makeTeaTable } from './props/seating.js';
 import { makeClock } from './props/clock.js';
@@ -16,6 +16,10 @@ import { makeMachine } from './props/machine.js';
 import { makeDiary } from './props/diary.js';
 import { makeAssembler } from './props/assembler.js';
 import { makeKeyPiece } from './props/keyPiece.js';
+import { makeShelf } from './props/shelf.js';
+import { makeToolbox } from './props/toolbox.js';
+import { makeCrate, makeCrateStack } from './props/crate.js';
+import { makeCabinet } from './props/cabinet.js';
 
 const PROP_BUILDERS = {
   desk: (item) => makeDesk(item.id),
@@ -44,6 +48,12 @@ const PROP_BUILDERS = {
   diary: (item) => makeDiary(item.id),
   assembler: (item) => makeAssembler(item.id),
   keyPiece: (item) => makeKeyPiece(item.id),
+  shelf: (item) => makeShelf(item.id),
+  toolbox: (item) => makeToolbox(item.id),
+  crate: (item) => makeCrate(item.id),
+  crateStack: (item) => makeCrateStack(item.id),
+  cabinet: (item) => makeCabinet(item.id),
+  oldRug: (item) => makeOldRug(item.id),
 };
 
 export function createFurnitureForRoom(scene, roomName, camera, renderer) {

@@ -9,7 +9,8 @@
  *              'frame', 'rug', 'lamp', 'cushion', 'clock', 'assembler',
  *              'studyDesk', 'officeChair', 'largeBookshelf', 'armchair',
  *              'teaTable', 'rectRug', 'diary', 'keyPiece', 'workbench',
- *              'blankPaper', 'acrylicPanel', 'machine')
+ *              'blankPaper', 'acrylicPanel', 'machine', 'shelf', 'toolbox',
+ *              'crate', 'crateStack', 'cabinet', 'oldRug')
  *    - pos   : 월드 좌표 [X, Y, Z] (단위: 미터)
  *    - rotY  : Y축 수평 회전각 (단위: 라디안, 기본값: 0)
  * ------------------------------------------------------------------ */
@@ -29,9 +30,17 @@ export const FURNITURE = [
 
   // ---------- 침실 A (bedA) → 공방 ----------
   { id: 'bedA.workbench', room: 'bedA', type: 'workbench', pos: [-0.50, 0, -5.00], rotY: 0 }, // §11.2 — 방 중앙
-  { id: 'bedA.blankPaper', room: 'bedA', type: 'blankPaper', pos: [0.60, 1.40, -6.90], rotY: 0 }, // §11.2 — 북벽, 창문 W1 오른쪽
-  { id: 'bedA.acrylicPanel', room: 'bedA', type: 'acrylicPanel', pos: [1.60, 1.40, -6.90], rotY: 0 }, // §11.2 — 백지 옆
+  // 배치1 보완: y 1.40→1.15(창문 y중심 1.4보다 아래), x 0.60→0.75(백지)
+  // /1.60→1.45(아크릴판) — 창문과 안 헷갈리게, 둘 사이 간격은 좁혀서
+  // 한 세트로 보이게. 창문 우단(0.2)·동벽(1.94) 제약은 그대로 지킨다.
+  { id: 'bedA.blankPaper', room: 'bedA', type: 'blankPaper', pos: [0.75, 1.15, -6.90], rotY: 0 },
+  { id: 'bedA.acrylicPanel', room: 'bedA', type: 'acrylicPanel', pos: [1.45, 1.15, -6.90], rotY: 0 },
   { id: 'bedA.keyPiece2', room: 'bedA', type: 'keyPiece', pos: [-0.50, 0.80, -5.00], rotY: 0 }, // §11.2 — 작업대 위
+  // 배치1 보완: 순수 배경 소품(퍼즐 무관). 문 앞 통로·작업대 주변은 비움.
+  { id: 'bedA.shelf', room: 'bedA', type: 'shelf', pos: [1.92, 1.0, -5.6], rotY: -Math.PI / 2 },
+  { id: 'bedA.toolbox', room: 'bedA', type: 'toolbox', pos: [-1.0, 0, -6.3], rotY: 0 },
+  { id: 'bedA.crate1', room: 'bedA', type: 'crate', pos: [-2.74, 0, -6.0], rotY: 0 },
+  { id: 'bedA.crate2', room: 'bedA', type: 'crate', pos: [1.2, 0, -4.0], rotY: Math.PI / 6 },
 
   // ---------- 작업실 (study) ----------
   { id: null, room: 'study', type: 'studyDesk', pos: [5.5, 0, -1.55], rotY: 0 },
@@ -45,4 +54,8 @@ export const FURNITURE = [
 
   // ---------- 침실 B (bedB) → 보관소 ----------
   { id: 'bedB.machine', room: 'bedB', type: 'machine', pos: [0, 0, 5.20], rotY: 0 }, // §11.2 — 방 한가운데. keyPiece3는 machine 조형의 자식
+  // 배치1 보완: 순수 배경 소품(퍼즐 무관). 기계장치 사방 1.0m는 비움.
+  { id: 'bedB.cabinet', room: 'bedB', type: 'cabinet', pos: [-1.69, 0, 6.15], rotY: Math.PI / 2 },
+  { id: 'bedB.crateStack', room: 'bedB', type: 'crateStack', pos: [1.03, 0, 4.28], rotY: 0 },
+  { id: 'bedB.oldRug', room: 'bedB', type: 'oldRug', pos: [0, 0.01, 5.0], rotY: 0 },
 ];

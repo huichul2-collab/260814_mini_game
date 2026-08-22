@@ -43,6 +43,15 @@ export const OBJECTS = {
 
   'bedB.machine': { name: '기계 장치', text: '가운데 홈이 비어 있다. 톱니바퀴가 필요해 보인다.' },
   'bedB.keyPiece3': { name: '열쇠 조각', text: '서랍 안에 있던 마지막 조각.' },
+
+  // 배치1 보완 — 퍼즐과 무관한 순수 배경 소품. 설명도 그만큼 짧게.
+  'bedA.shelf': { name: '선반', text: '별 특별할 것 없는 선반이다.' },
+  'bedA.toolbox': { name: '공구 상자', text: '낡은 공구들이 들어 있다.' },
+  'bedA.crate1': { name: '나무 상자', text: '평범한 나무 상자다.' },
+  'bedA.crate2': { name: '나무 상자', text: '평범한 나무 상자다.' },
+  'bedB.cabinet': { name: '캐비닛', text: '오래된 캐비닛이다.' },
+  'bedB.crateStack': { name: '상자 더미', text: '아무렇게나 쌓아둔 상자들이다.' },
+  'bedB.oldRug': { name: '낡은 러그', text: '빛바랜 러그다.' },
 };
 
 // M9-B: 잠긴 문. 이 배치에서는 D2 하나뿐이다 — D1/D3/D4는 M9-C에서 데이터
