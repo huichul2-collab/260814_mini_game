@@ -55,3 +55,19 @@ export function unlockDoor(doorId) {
 export function isDoorUnlocked(doorId) {
   return hasFlag(`unlockedDoors:${doorId}`);
 }
+
+// M9-E(E-1) 전용 헬퍼 — 오브젝트별 조사 횟수. story.js의 variants
+// 조건(visitedAtLeast)이 읽는다. flags/inventory와 달리 UI가 구독할
+// 이유가 없어(인벤토리 패널을 다시 그릴 필요 없음) notify()를 안 부른다
+// — 클릭할 때마다 매번 리렌더를 트리거하지 않기 위한 의도적 차이다.
+const visitCounts = new Map();
+
+export function incrementVisit(objectId) {
+  const n = (visitCounts.get(objectId) || 0) + 1;
+  visitCounts.set(objectId, n);
+  return n;
+}
+
+export function getVisitCount(objectId) {
+  return visitCounts.get(objectId) || 0;
+}

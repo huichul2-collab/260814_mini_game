@@ -7,6 +7,10 @@
 //      부재 검사다. 서재 배경 가구 6개가 이 구멍으로 클릭 불가 상태로
 //      남아있던 사고 이후 추가(2026-08-23). 의도적으로 id를 안 붙일
 //      오브젝트가 생기면 그때 화이트리스트를 만든다 — 지금은 예외 없음.
+//   시작-B. story.js OBJECTS의 variants 정합성(순수 node) — variants를
+//      가진 오브젝트마다 조건(requires) 없는 기본 항목이 정확히 하나
+//      있는가(M9-E E-1, §12.2). 없으면 조건이 하나도 안 맞을 때 설명이
+//      안 뜨고, 둘 이상이면 뒤엣것이 죽은 코드가 된다.
 //   0. room-tint-check.mjs와 같은 절대 하한(휘도/검정비율/최대픽셀) — 검은
 //      화면 렌더 실패를 다른 검사보다 먼저 잡는다.
 //   1. 씬의 TAG.INTERACTIVE id 전부가 story.js OBJECTS에 대응 키가 있는지
@@ -21,6 +25,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer-core';
 import { FURNITURE } from '../../game/furniture.js';
+import { OBJECTS } from '../../game/story.js';
 
 const gameDir = path.resolve(process.argv[2] || 'game');
 const outDir = path.resolve(process.argv[3] || 'tools/render-check');
@@ -66,6 +71,24 @@ console.log('--- 시작. furniture.js id 부재 검사 ---');
     failures.push(`furniture.js id 누락: ${labels.join(', ')}`);
   } else {
     console.log(`OK   furniture.js ${FURNITURE.length}개 항목 전부 id 보유`);
+  }
+}
+
+// ---------- 시작-B. story.js OBJECTS의 variants 정합성(순수 node) ----------
+console.log('--- 시작-B. variants 정합성 검사 ---');
+{
+  const bad = [];
+  for (const [id, entry] of Object.entries(OBJECTS)) {
+    if (!entry.variants) continue;
+    const fallbackCount = entry.variants.filter((v) => !v.requires).length;
+    if (fallbackCount !== 1) bad.push(`${id}(기본 항목 ${fallbackCount}개)`);
+  }
+  if (bad.length) {
+    console.error(`FAIL: variants 기본 항목이 정확히 1개가 아닌 오브젝트 — ${bad.join(', ')}`);
+    failures.push(`variants 정합성: ${bad.join(', ')}`);
+  } else {
+    const variantCount = Object.values(OBJECTS).filter((e) => e.variants).length;
+    console.log(`OK   variants 가진 오브젝트 ${variantCount}개 전부 기본 항목 정확히 1개`);
   }
 }
 

@@ -5,7 +5,7 @@ import { OBJECTS, LOCKS, PUZZLES, ITEMS, OBJECT_PUZZLES } from '../../story.js';
 import { showDialogue } from '../ui/dialogue.js';
 import { showKeypadModal } from '../ui/modal.js';
 import { showPaperModal } from '../ui/paperModal.js';
-import { markInspected, isDoorUnlocked, unlockDoor, getInventory, addItem } from '../story/state.js';
+import { markInspected, isDoorUnlocked, unlockDoor, getInventory, addItem, hasFlag, incrementVisit } from '../story/state.js';
 import { rebuildFrom } from '../physics/colliders.js';
 import { onFrame } from '../core/loop.js';
 
@@ -42,6 +42,30 @@ function grantItemsAndAnnounce(itemIds) {
   for (const id of itemIds) addItem(id);
   if (newlyGranted.length === 0) return '';
   return newlyGranted.map((id) => `${(ITEMS[id] && ITEMS[id].name) || id}을(를) 얻었다.`).join(' ');
+}
+
+// M9-E(E-1) — 조건부 설명(variants, docs/spec/M9-escape.md §12.2).
+// requires의 세 키(items/flags/visitedAtLeast)는 전부 AND, requires
+// 자체가 없으면(조건 없는 기본 항목) 항상 통과한다.
+function checkRequires(requires, invSet, visitCount) {
+  if (!requires) return true;
+  if (requires.items && !requires.items.every((id) => invSet.has(id))) return false;
+  if (requires.flags && !requires.flags.every((f) => hasFlag(f))) return false;
+  if (requires.visitedAtLeast != null && visitCount < requires.visitedAtLeast) return false;
+  return true;
+}
+
+// entry.variants가 있으면 위에서부터 첫 번째로 조건을 만족하는 항목의
+// text를 쓴다(조건 없는 기본 항목이 배열 끝에 있어 항상 뭔가는 매치된다
+// — interaction-check.mjs의 variants 정합성 검사가 이를 보장한다).
+// variants가 없으면 기존 단일 text 필드 그대로(하위호환).
+function resolveEntryText(entry, fallbackText, visitCount) {
+  if (!entry || !entry.variants) return fallbackText;
+  const invSet = new Set(getInventory());
+  for (const variant of entry.variants) {
+    if (checkRequires(variant.requires, invSet, visitCount)) return variant.text;
+  }
+  return fallbackText; // 정합성 검사를 통과했다면 위 루프에서 이미 반환됨 — 방어적 fallback
 }
 
 // P4(기계장치 서랍) 전용 — Z- 방향으로 슬라이드해 열리는 연출(docs/spec/
@@ -151,6 +175,11 @@ export function initProbe(scene, camera, renderer, player) {
       return;
     }
 
+    // M9-E(E-1): variants의 visitedAtLeast가 읽는 조사 횟수 — 이 지점(거리·
+    // 방향 통과 이후, 실제로 뭔가 반응하기 직전)에서 한 번만 올린다. 문
+    // 잠금 패널은 variants를 안 쓰지만 여기서 같이 올려도 무해하다.
+    const visitCount = incrementVisit(found.id);
+
     // M9-B/C: 잠긴 문 패널 — id가 'lock_D1'..'lock_D4' 형식이면 대화창이
     // 아니라 자물쇠 UI를 연다. 패널이 잠겨 있는 동안만 여기 도달한다
     // (해제되면 group.visible=false라 raycast가 애초에 이 오브젝트를 못
@@ -214,7 +243,8 @@ export function initProbe(scene, camera, renderer, player) {
       }
       const hasAll = objPuzzle.requiredItems.every((id) => inv.includes(id));
       if (!hasAll) {
-        showDialogue(entryName, objPuzzle.missingText);
+        const missingText = resolveEntryText(OBJECTS[found.id], objPuzzle.missingText, visitCount);
+        showDialogue(entryName, missingText);
         return;
       }
       const grantMsg = grantItemsAndAnnounce(objPuzzle.rewardItems);
@@ -244,7 +274,7 @@ export function initProbe(scene, camera, renderer, player) {
       return;
     }
 
-    let text = entry.text;
+    let text = resolveEntryText(entry, entry.text, visitCount);
     if (entry.grantItems) {
       const grantMsg = grantItemsAndAnnounce(entry.grantItems);
       if (grantMsg) text = `${text} ${grantMsg}`;

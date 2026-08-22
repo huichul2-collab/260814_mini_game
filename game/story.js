@@ -31,7 +31,17 @@ export const OBJECTS = {
     name: '멈춘 시계',
     text: `${CLOCK_TIME.hour}시 ${pad2(CLOCK_TIME.minute)}분을 가리킨 채 멈춰 있다.`,
   },
-  'living.assembler': { name: '조립 머신', text: '홈이 세 개 뚫려 있다. 뭔가를 끼워야 할 것 같다.' },
+  // M9-E(E-1) — variants 메커니즘 검증용 1번째 대상. 열쇠 조각을 하나라도
+  // 얻기 전에는 이게 뭔지도 모른다(§12.2, §12.8 "이름 변경: 조립머신 →
+  // '알 수 없는 기계'"). P5(열쇠 조립) 판정 자체는 story.OBJECT_PUZZLES가
+  // 그대로 맡는다 — 여긴 "아직 안 풀린 상태"의 안내문만 조건부로 바뀐다.
+  'living.assembler': {
+    name: '알 수 없는 기계',
+    variants: [
+      { requires: { items: ['key_piece_1'] }, text: '구멍 세 개. 열쇠 조각이 들어갈 것 같다.' },
+      { text: '구멍이 세 개 뚫려 있다. 용도를 알 수 없다.' }, // 조건 없음 = 기본, 항상 마지막
+    ],
+  },
 
   'study.diary': {
     name: '일기장',
@@ -64,8 +74,23 @@ export const OBJECTS = {
   // 배치1 보완 — 퍼즐과 무관한 순수 배경 소품. 설명도 그만큼 짧게.
   'bedA.shelf': { name: '선반', text: '별 특별할 것 없는 선반이다.' },
   'bedA.toolbox': { name: '공구 상자', text: '낡은 공구들이 들어 있다.' },
-  'bedA.crate1': { name: '나무 상자', text: '평범한 나무 상자다.' },
-  'bedA.crate2': { name: '나무 상자', text: '평범한 나무 상자다.' },
+  // M9-E(E-1) — variants 메커니즘 검증용 2번째 대상: visitedAtLeast(§12.2,
+  // §12.5). 두 상자 다 독립적으로 조사 횟수를 센다(state.js incrementVisit는
+  // 오브젝트 id별).
+  'bedA.crate1': {
+    name: '나무 상자',
+    variants: [
+      { requires: { visitedAtLeast: 2 }, text: '힘들게 들었다. 아무것도 쓰여 있지 않다.' },
+      { text: '밑에 뭔가 쓰여 있을까? 들어볼까.' },
+    ],
+  },
+  'bedA.crate2': {
+    name: '나무 상자',
+    variants: [
+      { requires: { visitedAtLeast: 2 }, text: '힘들게 들었다. 아무것도 쓰여 있지 않다.' },
+      { text: '밑에 뭔가 쓰여 있을까? 들어볼까.' },
+    ],
+  },
   'bedB.cabinet': { name: '캐비닛', text: '오래된 캐비닛이다.' },
   'bedB.crateStack': { name: '상자 더미', text: '아무렇게나 쌓아둔 상자들이다.' },
   'bedB.oldRug': { name: '낡은 러그', text: '빛바랜 러그다.' },
@@ -157,6 +182,9 @@ export const OBJECT_PUZZLES = {
   },
   'living.assembler': {
     requiredItems: ['key_piece_1', 'key_piece_2', 'key_piece_3'],
+    // OBJECTS['living.assembler']에 variants가 있으므로 "아직 안 풀림"
+    // 상태에서는 probe.js가 이 missingText 대신 그 variants를 쓴다(§12.2).
+    // 여긴 variants가 없는 오브젝트를 위한 하위호환 fallback으로 남겨둔다.
     missingText: '아직 열쇠 조각이 다 모이지 않았다.',
     successText: '조각 세 개를 끼우자 열쇠가 완성됐다.',
     alreadyText: '이미 조립을 마쳤다.',

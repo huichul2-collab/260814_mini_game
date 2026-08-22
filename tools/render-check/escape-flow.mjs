@@ -362,6 +362,105 @@ async function pressKeypad(type, str) {
   }
 }
 
+// 2026-08-23: probe.js가 레이캐스트에서 플레이어 자신을 제외하도록
+// 고쳐지면서, "카메라 코앞까지 당겨져 화면 좌표가 깨지는" 문제 중
+// 캐릭터 자기 몸 가림이 원인이던 것들(기계장치)은 이 우회 없이도
+// 해결됐다. D3·조립머신은 그것과 별개로 남벽 벽 충돌 자체가 원인
+// 이라 아직 남아있다(docs/STATE.md 열린 작업 참고 — M9-D 이후 카메라
+// pitch·거리 튜닝으로 다룰 문제). 드래그로 yaw를 180도 돌려 카메라를
+// 벽 반대쪽에 두는 임시 우회를 그 두 곳에만 계속 쓴다 — 걷기는 카메라
+// yaw 기준이라(controller.js) 볼일이 끝나면 반드시 원래대로 돌려놔야
+// 한다.
+const YAW_FLIP_DX = 524; // Δyaw=π가 되는 드래그 픽셀량(dragSensitivity=0.006 기준 실측)
+async function dragYawBy(dxPixels) {
+  await page.mouse.move(700, 300);
+  await page.mouse.down();
+  await page.mouse.move(700 + dxPixels, 300, { steps: 5 });
+  await page.mouse.up();
+  await sleep(50);
+}
+
+// placeAndClick()은 텔레포트 "직후"(카메라가 아직 안 움직인) 좌표를 쓴다 —
+// yaw를 드래그로 돌리고 카메라가 다시 수렴하길 기다린 *뒤에* 좌표를 다시
+// 계산해야 하는 경우(D3, 조립머신) 이 함수로 현재 카메라 기준 좌표만
+// 새로 뽑는다(텔레포트는 이미 placeAndClick이 해준 뒤).
+async function computeClickCoords(interactiveId) {
+  return page.evaluate(async ({ interactiveId }) => {
+    const { TAG } = await import('./src/core/tags.js');
+    const THREE = window.__debug.THREE;
+    let target = null;
+    window.__debug.scene.traverse((o) => { if (!target && o.userData && o.userData[TAG.INTERACTIVE] === interactiveId) target = o; });
+    if (!target) return { ok: false, reason: 'target-not-found' };
+    const tPos = new THREE.Vector3();
+    target.getWorldPosition(tPos);
+    const box = new THREE.Box3().setFromObject(target);
+    const clickPos = box.isEmpty() ? tPos : box.getCenter(new THREE.Vector3());
+    const vector = clickPos.clone().project(window.__debug.camera);
+    const canvas = document.querySelector('canvas');
+    const rect = canvas.getBoundingClientRect();
+    const sx = (vector.x * 0.5 + 0.5) * rect.width + rect.left;
+    const sy = (-vector.y * 0.5 + 0.5) * rect.height + rect.top;
+    return { ok: true, sx, sy };
+  }, { interactiveId });
+}
+
+// ---------- 8-A. 나무상자 2회 조사 → visitedAtLeast variants(M9-E E-1) ----------
+console.log('\n--- 8-A. 나무상자 2회 조사(1회차/2회차 설명 다름) ---');
+{
+  const crateClick = await placeAndClick('bedA.crate1', 0.6, 1.0);
+  if (check('나무상자 클릭 좌표 계산', crateClick.ok, JSON.stringify(crateClick))) {
+    await page.mouse.click(crateClick.sx, crateClick.sy);
+    await sleep(200);
+    const first = await page.evaluate(() => {
+      const t = document.getElementById('dialogue-text');
+      return t ? t.textContent : null;
+    });
+    check('1회차 설명', first === '밑에 뭔가 쓰여 있을까? 들어볼까.', `실제="${first}"`);
+    await page.evaluate(() => { const b = document.getElementById('dialogue-box'); if (b) b.click(); });
+    await sleep(350);
+
+    await page.mouse.click(crateClick.sx, crateClick.sy);
+    await sleep(200);
+    const second = await page.evaluate(() => {
+      const t = document.getElementById('dialogue-text');
+      return t ? t.textContent : null;
+    });
+    check('2회차 설명(1회차와 다름)', second === '힘들게 들었다. 아무것도 쓰여 있지 않다.', `실제="${second}"`);
+    await page.evaluate(() => { const b = document.getElementById('dialogue-box'); if (b) b.click(); });
+    await sleep(350);
+  } else {
+    failures += 2;
+  }
+}
+
+// ---------- 8-B. 알 수 없는 기계 조사(열쇠조각 0개) → variants 기본 항목 ----------
+console.log('\n--- 8-B. 알 수 없는 기계 조사(열쇠조각 0개) ---');
+{
+  // 조립머신은 거실 남벽에 있어 D3와 같은 이유로 카메라 벽 충돌이
+  // 생긴다 — yaw 180도 우회(위 helper 참고).
+  const click0pre = await placeAndClick('living.assembler', 0.6, -1.0);
+  await dragYawBy(-YAW_FLIP_DX);
+  await sleep(1200);
+  const click0 = await computeClickCoords('living.assembler');
+  if (check('알 수 없는 기계 클릭 좌표 계산(0개)', click0pre.ok && click0.ok, JSON.stringify({ click0pre, click0 }))) {
+    await page.mouse.click(click0.sx, click0.sy);
+    await sleep(200);
+    const dlg = await page.evaluate(() => {
+      const name = document.getElementById('dialogue-name');
+      const text = document.getElementById('dialogue-text');
+      return { name: name ? name.textContent : null, text: text ? text.textContent : null };
+    });
+    check('이름이 "알 수 없는 기계"', dlg.name === '알 수 없는 기계', `실제="${dlg.name}"`);
+    check('열쇠조각 0개 상태 기본 설명', dlg.text === '구멍이 세 개 뚫려 있다. 용도를 알 수 없다.', `실제="${dlg.text}"`);
+    await page.evaluate(() => { const b = document.getElementById('dialogue-box'); if (b) b.click(); });
+    await sleep(350);
+  } else {
+    failures += 2;
+  }
+  await dragYawBy(YAW_FLIP_DX); // 원상복구
+  await sleep(1200);
+}
+
 // ---------- 9. 서재 일기장 조사 → UV 랜턴 + 열쇠조각1 획득 ----------
 console.log('\n--- 9. 일기장 조사 → 아이템 획득 ---');
 // officeChair(5.5,-0.9)가 desk(5.5,-1.55) 남쪽에 있어 남쪽에서 접근하면
@@ -382,6 +481,34 @@ if (check('일기장 클릭 좌표 계산', diaryClick.ok, JSON.stringify(diaryC
   check('인벤토리에 key_piece_1 추가됨', inv.includes('key_piece_1'), JSON.stringify(inv));
 } else {
   failures += 3;
+}
+
+// ---------- 9-A. 알 수 없는 기계 조사(열쇠조각 1개 이상) → variants 전환 확인 ----------
+console.log('\n--- 9-A. 알 수 없는 기계 조사(열쇠조각 1개 이상) ---');
+{
+  const click1pre = await placeAndClick('living.assembler', 0.6, -1.0);
+  await dragYawBy(-YAW_FLIP_DX);
+  await sleep(1200);
+  const click1 = await computeClickCoords('living.assembler');
+  if (check('알 수 없는 기계 클릭 좌표 계산(1개+)', click1pre.ok && click1.ok, JSON.stringify({ click1pre, click1 }))) {
+    await page.mouse.click(click1.sx, click1.sy);
+    await sleep(200);
+    const dlg = await page.evaluate(() => {
+      const text = document.getElementById('dialogue-text');
+      return text ? text.textContent : null;
+    });
+    check(
+      '열쇠조각 1개 이상 상태에서 설명이 바뀜(0개 상태와 다름)',
+      dlg === '구멍 세 개. 열쇠 조각이 들어갈 것 같다.',
+      `실제="${dlg}"`
+    );
+    await page.evaluate(() => { const b = document.getElementById('dialogue-box'); if (b) b.click(); });
+    await sleep(350);
+  } else {
+    failures += 1;
+  }
+  await dragYawBy(YAW_FLIP_DX); // 원상복구
+  await sleep(1200);
 }
 
 // ---------- 10~12. D1(방향 자물쇠, P2) — 오답→정답→공방 진입 ----------
@@ -455,48 +582,6 @@ if (paperClick.ok) {
   await sleep(200);
 } else {
   failures += 3;
-}
-
-// 2026-08-23: probe.js가 레이캐스트에서 플레이어 자신을 제외하도록
-// 고쳐지면서, "카메라 코앞까지 당겨져 화면 좌표가 깨지는" 문제 중
-// 캐릭터 자기 몸 가림이 원인이던 것들(기계장치)은 이 우회 없이도
-// 해결됐다. D3·조립머신은 그것과 별개로 남벽 벽 충돌 자체가 원인
-// 이라 아직 남아있다(docs/STATE.md 열린 작업 참고 — M9-D 이후 카메라
-// pitch·거리 튜닝으로 다룰 문제). 드래그로 yaw를 180도 돌려 카메라를
-// 벽 반대쪽에 두는 임시 우회를 그 두 곳에만 계속 쓴다 — 걷기는 카메라
-// yaw 기준이라(controller.js) 볼일이 끝나면 반드시 원래대로 돌려놔야
-// 한다.
-const YAW_FLIP_DX = 524; // Δyaw=π가 되는 드래그 픽셀량(dragSensitivity=0.006 기준 실측)
-async function dragYawBy(dxPixels) {
-  await page.mouse.move(700, 300);
-  await page.mouse.down();
-  await page.mouse.move(700 + dxPixels, 300, { steps: 5 });
-  await page.mouse.up();
-  await sleep(50);
-}
-
-// placeAndClick()은 텔레포트 "직후"(카메라가 아직 안 움직인) 좌표를 쓴다 —
-// yaw를 드래그로 돌리고 카메라가 다시 수렴하길 기다린 *뒤에* 좌표를 다시
-// 계산해야 하는 경우(D3, 조립머신) 이 함수로 현재 카메라 기준 좌표만
-// 새로 뽑는다(텔레포트는 이미 placeAndClick이 해준 뒤).
-async function computeClickCoords(interactiveId) {
-  return page.evaluate(async ({ interactiveId }) => {
-    const { TAG } = await import('./src/core/tags.js');
-    const THREE = window.__debug.THREE;
-    let target = null;
-    window.__debug.scene.traverse((o) => { if (!target && o.userData && o.userData[TAG.INTERACTIVE] === interactiveId) target = o; });
-    if (!target) return { ok: false, reason: 'target-not-found' };
-    const tPos = new THREE.Vector3();
-    target.getWorldPosition(tPos);
-    const box = new THREE.Box3().setFromObject(target);
-    const clickPos = box.isEmpty() ? tPos : box.getCenter(new THREE.Vector3());
-    const vector = clickPos.clone().project(window.__debug.camera);
-    const canvas = document.querySelector('canvas');
-    const rect = canvas.getBoundingClientRect();
-    const sx = (vector.x * 0.5 + 0.5) * rect.width + rect.left;
-    const sy = (-vector.y * 0.5 + 0.5) * rect.height + rect.top;
-    return { ok: true, sx, sy };
-  }, { interactiveId });
 }
 
 // ---------- 14~15. D3(영어 자물쇠, P3) — 정답 입력 → 보관소 진입 ----------
