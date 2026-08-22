@@ -13,7 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer-core';
-import { CLOCK_TIME, PUZZLES, ENDING_TEXT } from '../../game/story.js';
+import { CLOCK_TIME, PUZZLES, ENDING_TEXT, OBJECTS } from '../../game/story.js';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const gameDir = path.resolve(process.argv[2] || path.join(scriptDir, '..', '..', 'game'));
@@ -457,12 +457,15 @@ if (paperClick.ok) {
   failures += 3;
 }
 
-// D3는 거실 남벽에 있다 — 그 벽 안쪽(거실)에 서면 카메라의 기본 시선
-// (yaw=0, 항상 플레이어 뒤쪽 +Z)이 벽을 뚫고 나가는 방향이라
-// followCamera.js의 벽 충돌 로직이 패널 코앞까지 카메라를 당겨버려
-// screen-projection이 깨진다(실측 확인). 드래그로 yaw를 180도 돌려
-// 카메라가 벽 반대쪽(거실 안쪽)에 있게 만든다 — 걷기는 카메라 yaw
-// 기준이라(controller.js) 볼일이 끝나면 반드시 원래대로 돌려놔야 한다.
+// 2026-08-23: probe.js가 레이캐스트에서 플레이어 자신을 제외하도록
+// 고쳐지면서, "카메라 코앞까지 당겨져 화면 좌표가 깨지는" 문제 중
+// 캐릭터 자기 몸 가림이 원인이던 것들(기계장치)은 이 우회 없이도
+// 해결됐다. D3·조립머신은 그것과 별개로 남벽 벽 충돌 자체가 원인
+// 이라 아직 남아있다(docs/STATE.md 열린 작업 참고 — M9-D 이후 카메라
+// pitch·거리 튜닝으로 다룰 문제). 드래그로 yaw를 180도 돌려 카메라를
+// 벽 반대쪽에 두는 임시 우회를 그 두 곳에만 계속 쓴다 — 걷기는 카메라
+// yaw 기준이라(controller.js) 볼일이 끝나면 반드시 원래대로 돌려놔야
+// 한다.
 const YAW_FLIP_DX = 524; // Δyaw=π가 되는 드래그 픽셀량(dragSensitivity=0.006 기준 실측)
 async function dragYawBy(dxPixels) {
   await page.mouse.move(700, 300);
@@ -474,8 +477,8 @@ async function dragYawBy(dxPixels) {
 
 // placeAndClick()은 텔레포트 "직후"(카메라가 아직 안 움직인) 좌표를 쓴다 —
 // yaw를 드래그로 돌리고 카메라가 다시 수렴하길 기다린 *뒤에* 좌표를 다시
-// 계산해야 하는 경우(D3/기계장치/조립머신) 이 함수로 현재 카메라 기준
-// 좌표만 새로 뽑는다(텔레포트는 이미 placeAndClick이 해준 뒤).
+// 계산해야 하는 경우(D3, 조립머신) 이 함수로 현재 카메라 기준 좌표만
+// 새로 뽑는다(텔레포트는 이미 placeAndClick이 해준 뒤).
 async function computeClickCoords(interactiveId) {
   return page.evaluate(async ({ interactiveId }) => {
     const { TAG } = await import('./src/core/tags.js');
@@ -529,15 +532,12 @@ if (d3ModalOpen) {
 
 // ---------- 16. 보관소 기계장치 조사 → 서랍 열림 + 열쇠조각3 획득 ----------
 console.log('\n--- 16. 기계장치 조사 → 서랍 열림 ---');
-// 기계장치는 방 한가운데지만 보관소가 좁아(4x4) 접근 가능한 자리가
-// 전부 남벽에 가깝다 — 남쪽에서 접근하면 카메라가 벽에 눌려 코앞까지
-// 당겨지고, 심지어 캐릭터 자기 몸이 레이캐스트를 가린다(실측 확인).
-// D3와 같은 이유로 yaw를 반전해 카메라를 반대쪽(문 쪽)에 둔다.
-const machineClick0 = await placeAndClick('bedB.machine', 0.6, 1.0);
-await dragYawBy(-YAW_FLIP_DX);
-await sleep(1200);
-const machineClick = await computeClickCoords('bedB.machine');
-check('기계장치 클릭 좌표 계산', machineClick0.ok && machineClick.ok, JSON.stringify({ machineClick0, machineClick }));
+// probe.js가 이제 레이캐스트에서 플레이어 자신을 제외하므로(캐릭터
+// 자기 몸에 가려 클릭이 씹히던 진짜 버그, 2026-08-23 수정) yaw 반전
+// 없이도 남쪽 접근만으로 충분하다 — 이전엔 이게 "벽 충돌"인 줄
+// 알았는데 실은 자기 몸 가림이었다.
+const machineClick = await placeAndClick('bedB.machine', 0.6, 1.0);
+check('기계장치 클릭 좌표 계산', machineClick.ok, JSON.stringify(machineClick));
 if (machineClick.ok) {
   await page.mouse.click(machineClick.sx, machineClick.sy);
   await sleep(200);
@@ -561,8 +561,6 @@ if (machineClick.ok) {
 } else {
   failures += 3;
 }
-await dragYawBy(YAW_FLIP_DX); // 원상복구 — 다음 걷기가 yaw=0 기준
-await sleep(1200);
 
 // ---------- 17. 거실 조립머신 조사 → 현관 열쇠 획득 ----------
 console.log('\n--- 17. 조립머신 조사 → 현관 열쇠 획득 ---');
@@ -610,6 +608,33 @@ const endingDlg = await page.evaluate(async () => {
 });
 check('엔딩 플래그가 켜짐', endingDlg.shown);
 check('엔딩 대사가 정확히 표시됨', endingDlg.text === ENDING_TEXT, `실제="${endingDlg.text}"`);
+
+// ---------- 20. 정면 클릭 회귀 테스트 (2026-08-23 카메라 레이캐스트 버그) ----------
+// probe.js가 씬 전체를 레이캐스트하면서 3인칭 카메라와 오브젝트 사이에
+// 흔히 서 있는 플레이어 자신의 몸(로봇 GLB)에 먼저 맞아 클릭이 씹히던
+// 실사용 버그의 재발 방지 테스트다. 위 1~19번은 전부 카메라 yaw를
+// 돌려 우회한 상태라 이 버그를 못 잡았다 — 여기서는 yaw를 하나도
+// 안 건드린 "정면으로 똑바로 접근" 상태(오프셋을 오브젝트 정면
+// 1.0m로만 준다, 대각선 없음)로 직접 재현해서 검사한다.
+console.log('\n--- 20. 정면 클릭 회귀 테스트 ---');
+const frontClick = await placeAndClick('bedA.workbench', 0, 1.0);
+check('정면 오브젝트 클릭 좌표 계산', frontClick.ok, JSON.stringify(frontClick));
+if (frontClick.ok) {
+  await page.mouse.click(frontClick.sx, frontClick.sy);
+  await sleep(200);
+  const dlg = await page.evaluate(() => {
+    const box = document.getElementById('dialogue-box');
+    const text = document.getElementById('dialogue-text');
+    return { open: !!box && box.style.display === 'block', text: text ? text.textContent : null };
+  });
+  check(
+    '카메라 yaw 기본값 상태에서 정면 1.0m 오브젝트 클릭이 대화창을 띄움(캐릭터 자기 몸에 안 가려짐)',
+    dlg.open && dlg.text === OBJECTS['bedA.workbench'].text,
+    `text="${dlg.text}"`
+  );
+} else {
+  failures++;
+}
 
 await browser.close();
 server.close();

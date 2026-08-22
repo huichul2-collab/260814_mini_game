@@ -88,6 +88,21 @@ export function initProbe(scene, camera, renderer, player) {
     return null;
   }
 
+  // 3인칭이라 카메라와 오브젝트 사이에 플레이어 캐릭터 자신이 흔히
+  // 서 있다 — 레이가 캐릭터 몸(로봇 GLB, 메시 3개+스킨 2개)에 먼저
+  // 맞으면 실제 대상을 코앞에 두고도 클릭이 무시된다(실사용 버그,
+  // escape-flow.mjs가 카메라 yaw를 180도 돌려 우회하고 있던 게 증거).
+  // 씬 구조가 바뀌어도 안전하게 조상을 거슬러 올라가며 player.root
+  // 서브트리에 속한 히트를 건너뛴다.
+  function isUnderPlayer(obj) {
+    let cur = obj;
+    while (cur) {
+      if (cur === player.root) return true;
+      cur = cur.parent;
+    }
+    return false;
+  }
+
   function onPointerDown(e) {
     downX = e.clientX;
     downY = e.clientY;
@@ -102,9 +117,10 @@ export function initProbe(scene, camera, renderer, player) {
     setPointer(e);
     raycaster.setFromCamera(pointer, camera);
     const hits = raycaster.intersectObjects(scene.children, true);
-    if (!hits.length) return;
+    const firstRealHit = hits.find((h) => !isUnderPlayer(h.object));
+    if (!firstRealHit) return;
 
-    const found = findInteractive(hits[0].object);
+    const found = findInteractive(firstRealHit.object);
     if (!found) return; // 상호작용 대상이 아닌 걸 클릭 — 조용히 무시
 
     found.obj.getWorldPosition(_targetPos);
