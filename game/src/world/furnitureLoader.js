@@ -20,8 +20,12 @@ import { makeShelf } from './props/shelf.js';
 import { makeToolbox } from './props/toolbox.js';
 import { makeCrate, makeCrateStack } from './props/crate.js';
 import { makeCabinet, makeLockedCabinet } from './props/cabinet.js';
+import { makeNotepad } from './props/notepad.js';
+import { makePencilCase } from './props/pencilCase.js';
 
 const PROP_BUILDERS = {
+  notepad: (item) => makeNotepad(item.id),
+  pencilCase: (item) => makePencilCase(item.id),
   desk: (item) => makeDesk(item.id),
   studyDesk: (item) => makeStudyDesk(item.id),
   chair: (item) => makeChair(item.id),

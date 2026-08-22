@@ -316,32 +316,16 @@ console.log('');
 console.log('로그:', logs.length ? logs : '없음');
 console.log('');
 
-// M9-C 배치1 보완(2026-08-22): 이 숫자는 "소품 개수"가 아니다. 이
-// 스크립트는 중첩된 THREE.Group도 자기 지오메트리 박스가 비어있지
-// 않으면 각각 별도 항목으로 센다(위 순회 로직 참고). furniture.js
-// 최상위 항목은 30개(거실 10 + 공방 8 + 서재 8 + 보관소 4)인데, 세
-// 조형이 내부에 이름 있는/지오메트리를 직접 가진 하위 그룹을 더
-// 갖고 있어 그만큼 더 잡힌다:
-//   - 거실 시계: hourHand/minuteHand 피벗 그룹 2개(handsGroup 자체는
-//     자기 지오메트리가 없어 빈 박스로 걸러짐) → +2
-//   - 보관소 기계장치: 서랍(drawer) 그룹 1개 + 그 안의 열쇠조각3
-//     (keyPiece3) 그룹 1개 — keyPiece3는 furniture.js 항목이 아니라
-//     machine.js가 만드는 자식이다(§11.2) → +2
-//   - 보관소 상자 더미(crateStack): 그 자신은 자기 지오메트리가 없어
-//     빈 박스로 걸러지지만, 안에 든 상자 2개(bottom/top)는 각자
-//     지오메트리가 있어 개별 집계됨 → 항목 1개가 2개로 바뀌어 순증 +1
-// 30 + 2(시계) + 2(기계장치) + 1(상자 더미) = 35.
-// M9-E E-3(2026-08-23): furniture.js 최상위 항목이 31개로 늘었다
-// (study.cabinet 추가) + 그 자식 신문 스크랩 그룹(newsClippings, 자기
-// 지오메트리는 없지만 안의 스크랩 3장 메시가 있어 빈 박스로 안 걸러짐,
-// machine.js의 drawer와 같은 패턴) → +1.
-// 31 + 2(시계) + 2(기계장치) + 1(상자 더미) + 1(신문 스크랩) = 37.
-const EXPECTED_PROP_NODES = 37;
+// M9-C 배치1 보완(2026-08-22): furniture.js 최상위 30개 + 시계 하위 2개 + 기계장치 하위 2개 + 상자더미 순증 1개 = 35.
+// M9-E E-3(2026-08-23): study.cabinet (+1) + 자식 newsClippings (+1) = +2.
+// M9-E 함정 소품(2026-08-23): living.notepad (+1) + study.pencilCase (+1) = +2.
+// 총 노드: 35 + 2 + 2 = 39.
+const EXPECTED_PROP_NODES = 39;
 if (results.length !== EXPECTED_PROP_NODES) {
   console.error(`FAIL: 소품/하위노드 총 개수 오차 — 기대값 ${EXPECTED_PROP_NODES}개, 실제 ${results.length}개`);
   process.exit(1);
 }
 
-console.log(`OK   소품/하위노드 총 개수 ${results.length}개 정확히 일치(furniture.js 최상위 31개 + 시계 하위 2개 + 기계장치 하위 2개 + 상자더미 순증 1개 + 신문스크랩 하위 1개)`);
+console.log(`OK   소품/하위노드 총 개수 ${results.length}개 정확히 일치(furniture.js 최상위 33개 + 시계 하위 2개 + 기계장치 하위 2개 + 상자더미 순증 1개 + 신문스크랩 하위 1개)`);
 console.log(warnings === 0 ? '경고 없음' : `경고 ${warnings}건 — 최종 판단은 사람이 할 것`);
 process.exit(0);
