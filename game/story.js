@@ -69,13 +69,35 @@ export const OBJECTS = {
   'study.rug': { name: '러그', text: '바닥에 깔린 러그다.' },
 
   'bedA.workbench': { name: '작업대', text: '공구 자국이 가득한 낡은 작업대.' },
-  // P3 단서 — 두 오브젝트 모두 같은 팝업을 연다(paperModal.js). §6.1대로
-  // "UV를 비춘다/판을 겹친다"는 3D가 아니라 2D 팝업 안에서 처리한다.
-  'bedA.blankPaper': { name: '백지', text: '아무것도 적혀 있지 않은 종이다.', paperClue: 'P3' },
-  'bedA.acrylicPanel': { name: '아크릴판', text: '구멍이 뚫린 투명한 판. 뭔가를 겹쳐 보라는 뜻 같다.', paperClue: 'P3' },
+  // M9-E(E-4, §12.5) — "랜턴을 비춘다"와 "판을 겹친다"를 별개 발견으로
+  // 나눈다. 백지 쪽 안내문(팝업 상단 promptText)이 UV 랜턴 보유 여부로
+  // 바뀌는 건 variants가 맡고, 실제 글자 표시/겹치기 토글은 여전히
+  // paperModal.js 안에서 처리한다(hasLantern/overlayOn). 아크릴판은
+  // 이제 이 팝업과 무관하다 — paperClue를 빼서 그냥 평범한 소품이 됐다
+  // ("따로 조사하면 '구멍이 뚫린 판이다' 정도만").
+  'bedA.blankPaper': {
+    name: '백지',
+    paperClue: 'P3',
+    variants: [
+      { requires: { items: ['uv_lantern'] }, text: '자외선을 비추자 글자가 떠오른다.' },
+      { text: '빈 종이다. 아무것도 쓰여 있지 않다.' }, // 조건 없음 = 기본
+    ],
+  },
+  'bedA.acrylicPanel': { name: '아크릴판', text: '구멍이 뚫린 판이다.' },
   'bedA.keyPiece2': { name: '열쇠 조각', text: '작업대 위에 놓인 금속 조각.' },
 
-  'bedB.machine': { name: '기계 장치', text: '가운데 홈이 비어 있다. 톱니바퀴가 필요해 보인다.' },
+  // M9-E(E-4, §12.6) — 톱니 미보유/보유 두 상태만 여기서 다룬다("이미
+  // 해결"은 probe.js가 key_piece_3 소지 여부로 직접 판정한다 — 입력이
+  // 필요한 다이얼 단계가 껴 있어 OBJECT_PUZZLES의 "가진 즉시 자동 해결"
+  // 패턴이 안 맞는다, study.cabinet과 같은 이유로 이 오브젝트도 그
+  // 테이블을 안 쓴다).
+  'bedB.machine': {
+    name: '기계 장치',
+    variants: [
+      { requires: { items: ['gear'] }, text: '톱니바퀴를 끼웠다. 다이얼을 돌려봐야겠다.' },
+      { text: '축이 비어 있다. 무언가 끼워야 돌아갈 것 같다.' }, // 조건 없음 = 기본
+    ],
+  },
   'bedB.keyPiece3': { name: '열쇠 조각', text: '서랍 안에 있던 마지막 조각.' },
 
   // 배치1 보완 — 퍼즐과 무관한 순수 배경 소품. 설명도 그만큼 짧게.
@@ -190,6 +212,14 @@ export const PUZZLES = {
     // 이 값을 그대로 읽어 표시한다. 여기 말고 다른 곳에 "TRUTH"를 또 적지 않는다)
     wrongText: '맞지 않는다.',
   },
+  // M9-E(E-4, §12.6) — 보관소 다이얼. 신문 스크랩 ②(§12.7)에서 유도되는
+  // 좌3·우4·좌1. 형식은 modal.js buildDialUI()가 직렬화하는 그대로
+  // '[L|R][자릿수]' 반복 문자열이다 — 여기 말고 다른 곳에 새로 안 적는다.
+  P4: {
+    type: 'dial',
+    answer: 'L3R4L1', // ⭐ 정답
+    wrongText: '헛돈다.',
+  },
   // D4는 코드 입력이 아니라 아이템 소지 판정이다(§3 P5의 결과물).
   P_D4: {
     type: 'item',
@@ -205,13 +235,9 @@ export const PUZZLES = {
 // "풀었다"의 표시라 별도 완료 플래그가 필요 없다(§2 막힘 방지 원칙과
 // 같은 이유 — 아이템은 안 사라진다).
 export const OBJECT_PUZZLES = {
-  'bedB.machine': {
-    requiredItems: ['gear'],
-    missingText: '톱니바퀴가 필요해 보인다.',
-    successText: '톱니바퀴를 홈에 끼우자 서랍이 스르륵 열렸다.',
-    alreadyText: '서랍이 열려 있다. 안은 비어 있다.',
-    rewardItems: ['key_piece_3'],
-  },
+  // bedB.machine은 여기 없다 — M9-E(E-4)부터 톱니+다이얼 2단계라 "가진
+  // 즉시 자동 해결"이 안 맞는다(위 OBJECTS.bedB.machine 주석 참고).
+  // probe.js가 found.id === 'bedB.machine'로 직접 처리한다.
   'living.assembler': {
     requiredItems: ['key_piece_1', 'key_piece_2', 'key_piece_3'],
     // OBJECTS['living.assembler']에 variants가 있으므로 "아직 안 풀림"

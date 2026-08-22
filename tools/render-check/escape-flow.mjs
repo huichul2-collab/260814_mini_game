@@ -388,6 +388,26 @@ async function pressKeypad(type, str) {
   }
 }
 
+// M9-E(E-4, §12.6) — 다이얼 입력. segments는 [['L',3],['R',4],['L',1]]
+// 같은 배열 — 방향 버튼을 그 횟수만큼 클릭한다(방향 전환 자체가 구간
+// 확정이라 별도 "확정" 버튼은 없다). confirm=true면 마지막에 #modal-
+// dial-confirm까지 눌러 판정을 요청한다(오답 테스트는 확인까지 눌러야
+// "헛돈다" 피드백이 뜬다 — modal.js가 그렇게 설계됨, 자릿수 채우자마자
+// 자동 판정하는 digits/arrows/letters와 다르다).
+async function pressDial(segments, { confirm = true } = {}) {
+  for (const [dir, count] of segments) {
+    const sel = dir === 'L' ? '#modal-dial-left' : '#modal-dial-right';
+    for (let i = 0; i < count; i++) {
+      await page.click(sel);
+      await sleep(40);
+    }
+  }
+  if (confirm) {
+    await page.click('#modal-dial-confirm');
+    await sleep(150);
+  }
+}
+
 // 2026-08-23: probe.js가 레이캐스트에서 플레이어 자신을 제외하도록
 // 고쳐지면서, "카메라 코앞까지 당겨져 화면 좌표가 깨지는" 문제 중
 // 캐릭터 자기 몸 가림이 원인이던 것들(기계장치)은 이 우회 없이도
@@ -485,6 +505,59 @@ console.log('\n--- 8-B. 알 수 없는 기계 조사(열쇠조각 0개) ---');
   }
   await dragYawBy(YAW_FLIP_DX); // 원상복구
   await sleep(1200);
+}
+
+// ---------- 8-C. 공방 백지 조사(UV 랜턴 미보유) — 1단계 ----------
+// M9-E(E-4, §12.5) — "랜턴을 비춘다"와 "판을 겹친다"를 별개 발견으로
+// 나눈 첫 단계. 이 시점(9번 이전)엔 아직 일기장을 안 읽어 uv_lantern이
+// 없다 — placeAndClick은 문/방 연결과 무관하게 대상 오브젝트로 바로
+// 순간이동하므로(이 스크립트의 모든 클릭 테스트가 쓰는 방식) 실제
+// 진행 순서와 상관없이 "UV 미보유 상태의 백지"를 여기서 바로 잴 수 있다.
+console.log('\n--- 8-C. 백지 조사(UV 랜턴 미보유) — 1단계 ---');
+{
+  const paperClick0 = await placeAndClick('bedA.blankPaper', 0.6, 1.0);
+  if (check('백지 클릭 좌표 계산(UV 미보유)', paperClick0.ok, JSON.stringify(paperClick0))) {
+    await page.mouse.click(paperClick0.sx, paperClick0.sy);
+    await sleep(200);
+    const before = await page.evaluate(() => {
+      const prompt = document.getElementById('modal-prompt');
+      const paper = document.getElementById('modal-paper');
+      return { prompt: prompt ? prompt.textContent : null, paper: paper ? paper.textContent : null };
+    });
+    check(
+      'UV 미보유 안내문(variants 1단계)',
+      before.prompt === '빈 종이다. 아무것도 쓰여 있지 않다.',
+      `실제="${before.prompt}"`
+    );
+    check('UV 미보유 상태라 종이 내용도 빈 종이', before.paper === '빈 종이다.', `실제="${before.paper}"`);
+    await page.evaluate(() => { const b = document.getElementById('modal-close'); if (b) b.click(); });
+    await sleep(200);
+  } else {
+    failures += 2;
+  }
+}
+
+// ---------- 8-D. 보관소 기계장치 조사(톱니 미보유) — 다이얼 안 뜸 ----------
+// M9-E(E-4, §12.6) — D3를 아직 안 풀어서 gear가 없다(gear는 D3 보상,
+// 15번에서 나온다). 톱니 없이는 다이얼 UI 자체가 뜨면 안 된다.
+console.log('\n--- 8-D. 기계장치 조사(톱니 미보유) — 다이얼 안 뜸 ---');
+{
+  const machineClick0 = await placeAndClick('bedB.machine', 0.6, 1.0);
+  if (check('기계장치 클릭 좌표 계산(톱니 미보유)', machineClick0.ok, JSON.stringify(machineClick0))) {
+    await page.mouse.click(machineClick0.sx, machineClick0.sy);
+    await sleep(200);
+    const dlg = await page.evaluate(() => {
+      const text = document.getElementById('dialogue-text');
+      return text ? text.textContent : null;
+    });
+    check('톱니 미보유 안내문', dlg === '축이 비어 있다. 무언가 끼워야 돌아갈 것 같다.', `실제="${dlg}"`);
+    const dialOpen = await page.evaluate(() => !!document.getElementById('modal-overlay'));
+    check('톱니 없이는 다이얼 모달이 안 뜸', !dialOpen);
+    await page.evaluate(() => { const b = document.getElementById('dialogue-box'); if (b) b.click(); });
+    await sleep(350);
+  } else {
+    failures += 2;
+  }
 }
 
 // ---------- 9. 서재 일기장 조사 → UV 랜턴 + 열쇠조각1 획득 ----------
@@ -635,8 +708,19 @@ console.log('\n--- 12-A. 공구상자 클릭 → 파이프렌치 획득 ---');
 // 걸어서 통과한다 — 이미 풀린 자물쇠가 되돌아가는 방향으로도 진짜
 // 열려 있는지가 검증 대상이다(잠금 로직이 한쪽 방향만 확인하고 있었다면
 // 여기서 잡힌다).
+// ⚠️ 2026-08-23: 72a7d62(경유점 추가) 이후에도 비결정적으로 FAIL한다 —
+// main에서 3연속 실행 결과 1/3 실패, 2/3 통과. walkToward가 도착 여부를
+// 확인하지 않고 실시간(Date.now()) 기준 고정 ms 예산만큼만 키를 누르는
+// 구조라, 공방 작업대 모서리를 스치는 이 구간에서 헤드리스 크롬 프레임
+// 타이밍이 조금만 나빠지면(시스템 부하 등) 첫 구간에서 모서리에 걸려
+// 남은 예산으로 못 만회한다. 경유점 자체는 유효하지만 "고정 시간 이동"
+// 설계가 타이밍에 종속적이라 구조적으로 100% 결정적일 수 없다 —
+// walkToward를 "목표 반경 도달까지" 방식으로 바꾸지 않는 한 이 구간의
+// FAIL/PASS는 신뢰할 수 없다(KNOWN_FAILURES로 덮지 않고 여기 남겨둔다).
 console.log('\n--- 12-B. 실제 도보 귀환: 공방 → 거실 → 서재 ---');
-await walkToward({ x: -0.9, z: -3.6 }, 3000); // D1 개구부 앞 경유점 (작업대 모서리 우회)
+await walkToward({ x: -1.8, z: -5.8 }, 2000); // 작업대 좌측으로 이동
+await walkToward({ x: -1.8, z: -4.0 }, 2000); // 작업대 모서리 통과
+await walkToward({ x: -0.9, z: -3.6 }, 2000); // D1 개구부 앞 경유점
 const backToLiving = await walkToward({ x: 0, z: 0 }, 4000);
 check(
   '공방에서 거실로 실제 도보 복귀(D1 역방향 통과)',
@@ -710,10 +794,16 @@ if (paperClick.ok) {
   await sleep(200);
   const paperBefore = await page.evaluate(() => {
     const overlay = document.getElementById('modal-overlay');
+    const prompt = document.getElementById('modal-prompt');
     const paper = document.getElementById('modal-paper');
-    return { open: !!overlay, text: paper ? paper.textContent : null };
+    return { open: !!overlay, prompt: prompt ? prompt.textContent : null, text: paper ? paper.textContent : null };
   });
   check('단서 팝업이 뜸', paperBefore.open);
+  check(
+    'UV 랜턴 보유 안내문(variants 2단계)',
+    paperBefore.prompt === '자외선을 비추자 글자가 떠오른다.',
+    `실제="${paperBefore.prompt}"`
+  );
   check(
     'UV 랜턴 보유 상태라 빈 종이가 아님(겹치기 전)',
     paperBefore.text && paperBefore.text !== '빈 종이다.' && paperBefore.text !== PUZZLES.P3.answer,
@@ -729,7 +819,31 @@ if (paperClick.ok) {
   await page.evaluate(() => { const b = document.getElementById('modal-close'); if (b) b.click(); });
   await sleep(200);
 } else {
-  failures += 3;
+  failures += 4;
+}
+
+// ---------- 13-A. 아크릴판 직접 조사 — 이제 팝업과 무관(평범한 설명) ----------
+// M9-E(E-4, §12.5) — acrylicPanel에서 paperClue를 뺐다. 직접 클릭하면
+// 그냥 대화창으로 짧은 설명만 뜨고, P3 팝업(모달)은 안 열려야 한다.
+console.log('\n--- 13-A. 아크릴판 직접 조사(팝업 아님) ---');
+{
+  const acrylicClick = await placeAndClick('bedA.acrylicPanel', 0.6, 1.0);
+  if (check('아크릴판 클릭 좌표 계산', acrylicClick.ok, JSON.stringify(acrylicClick))) {
+    await page.mouse.click(acrylicClick.sx, acrylicClick.sy);
+    await sleep(200);
+    const dlg = await page.evaluate(() => {
+      const box = document.getElementById('dialogue-box');
+      const text = document.getElementById('dialogue-text');
+      return { open: !!box && box.style.display === 'block', text: text ? text.textContent : null };
+    });
+    check('아크릴판 평범한 설명', dlg.open && dlg.text === '구멍이 뚫린 판이다.', `text="${dlg.text}"`);
+    const modalOpened = await page.evaluate(() => !!document.getElementById('modal-overlay'));
+    check('아크릴판 클릭으론 팝업이 안 뜸', !modalOpened);
+    await page.evaluate(() => { const b = document.getElementById('dialogue-box'); if (b) b.click(); });
+    await sleep(350);
+  } else {
+    failures += 2;
+  }
 }
 
 // ---------- 14~15. D3(영어 자물쇠, P3) — 정답 입력 → 보관소 진입 ----------
@@ -763,17 +877,60 @@ if (d3ModalOpen) {
   await sleep(1200);
 }
 
-// ---------- 16. 보관소 기계장치 조사 → 서랍 열림 + 열쇠조각3 획득 ----------
-console.log('\n--- 16. 기계장치 조사 → 서랍 열림 ---');
+// ---------- 16. 보관소 기계장치 조사(톱니 보유) → 다이얼 → 서랍 열림 ----------
+// M9-E(E-4, §12.6) — D3 보상으로 gear를 이미 갖고 있다(15번). 톱니 보유
+// 상태에서 클릭하면 이제 즉시 지급이 아니라 다이얼 모달이 뜬다.
+console.log('\n--- 16. 기계장치 조사(톱니 보유) → 다이얼 ---');
 // probe.js가 이제 레이캐스트에서 플레이어 자신을 제외하므로(캐릭터
 // 자기 몸에 가려 클릭이 씹히던 진짜 버그, 2026-08-23 수정) yaw 반전
 // 없이도 남쪽 접근만으로 충분하다 — 이전엔 이게 "벽 충돌"인 줄
 // 알았는데 실은 자기 몸 가림이었다.
 const machineClick = await placeAndClick('bedB.machine', 0.6, 1.0);
-check('기계장치 클릭 좌표 계산', machineClick.ok, JSON.stringify(machineClick));
-if (machineClick.ok) {
-  await page.mouse.click(machineClick.sx, machineClick.sy);
+const machineOk = check('기계장치 클릭 좌표 계산', machineClick.ok, JSON.stringify(machineClick));
+if (machineOk) await page.mouse.click(machineClick.sx, machineClick.sy);
+await sleep(200);
+const dialOpened = await page.evaluate(() => !!document.getElementById('modal-overlay'));
+check('톱니 보유 상태에서 다이얼 모달이 뜸', dialOpened);
+if (!machineOk) failures += 1;
+
+console.log('\n--- 16-A. 다이얼 오답(스크랩 ① 유도값 L3) ---');
+if (dialOpened) {
+  await pressDial([['L', 3]]);
+  const afterL3 = await page.evaluate(() => {
+    const overlay = document.getElementById('modal-overlay');
+    const feedback = document.getElementById('modal-feedback');
+    const display = document.getElementById('modal-dial-display');
+    return { stillOpen: !!overlay, feedbackText: feedback ? feedback.textContent : null, display: display ? display.textContent : null };
+  });
+  check('오답(L3) 후 모달이 안 닫힘', afterL3.stillOpen);
+  check('오답 안내("헛돈다.") 표시', afterL3.feedbackText === PUZZLES.P4.wrongText, `실제="${afterL3.feedbackText}"`);
+  check('오답 후 입력이 초기화됨', afterL3.display === '입력 없음', `실제="${afterL3.display}"`);
+} else {
+  failures += 3;
+}
+
+console.log('\n--- 16-B. 다이얼 오답(스크랩 ③ 유도값 L13) ---');
+if (dialOpened) {
+  await pressDial([['L', 13]]);
+  const afterL13 = await page.evaluate(() => {
+    const overlay = document.getElementById('modal-overlay');
+    const feedback = document.getElementById('modal-feedback');
+    return { stillOpen: !!overlay, feedbackText: feedback ? feedback.textContent : null };
+  });
+  check('오답(L13) 후 모달이 안 닫힘', afterL13.stillOpen);
+  check('오답 안내("헛돈다.") 표시', afterL13.feedbackText === PUZZLES.P4.wrongText, `실제="${afterL13.feedbackText}"`);
+  const stillNoReward = !(await getInventory()).includes('key_piece_3');
+  check('오답 후 key_piece_3 미지급', stillNoReward);
+} else {
+  failures += 2;
+}
+
+console.log('\n--- 16-C. 다이얼 정답(L3R4L1) → 서랍 열림 + 열쇠조각3 획득 ---');
+if (dialOpened) {
+  await pressDial([['L', 3], ['R', 4], ['L', 1]]);
   await sleep(200);
+  const modalClosed = await page.evaluate(() => !document.getElementById('modal-overlay'));
+  check('정답 입력 후 모달이 닫힘', modalClosed);
   const dlg = await page.evaluate(() => {
     const text = document.getElementById('dialogue-text');
     return text ? text.textContent : null;
@@ -792,7 +949,7 @@ if (machineClick.ok) {
   });
   check('서랍이 실제로 Z- 방향 슬라이드함(위치 변화)', drawerZ !== null && drawerZ < -0.001, `drawer.position.z=${drawerZ}`);
 } else {
-  failures += 3;
+  failures += 4;
 }
 
 // ---------- 17. 거실 조립머신 조사 → 현관 열쇠 획득 ----------

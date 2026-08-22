@@ -238,9 +238,44 @@ export function initProbe(scene, camera, renderer, player) {
       return;
     }
 
-    // M9-C 배치2: P4(기계장치)·P5(조립머신) — 입력 없이 소지 여부만
-    // 보는 오브젝트 퍼즐(§3). 별도 완료 플래그 없이 rewardItems를 이미
-    // 갖고 있으면 그 자체가 "풀었다"는 뜻이다(아이템은 안 사라지므로).
+    // M9-E(E-4, §12.6) — 보관소 기계장치: 톱니 + 다이얼 2단. 입력(다이얼
+    // 회전)이 끼어 있어 아래 OBJECT_PUZZLES의 "가진 즉시 자동 해결"
+    // 패턴이 안 맞는다 — 문 자물쇠(lock_)와 같은 급의 전용 분기다. 이미
+    // 풀렸는지는 key_piece_3 소지 여부로 판정한다(다른 오브젝트 퍼즐과
+    // 같은 원칙 — 아이템은 안 사라지므로 그 자체가 "풀었다"는 표시).
+    if (found.id === 'bedB.machine') {
+      const machineEntry = OBJECTS['bedB.machine'];
+      const inv = getInventory();
+      if (inv.includes('key_piece_3')) {
+        showDialogue(machineEntry.name, '서랍이 열려 있다. 안은 비어 있다.');
+        markInspected(found.id);
+        return;
+      }
+      const machineText = resolveEntryText(machineEntry, '', visitCount);
+      if (!inv.includes('gear')) {
+        showDialogue(machineEntry.name, machineText);
+        markInspected(found.id);
+        return;
+      }
+      showKeypadModal({
+        type: 'dial',
+        promptText: machineText,
+        answer: PUZZLES.P4.answer,
+        wrongText: PUZZLES.P4.wrongText,
+        onSuccess: () => {
+          const grantMsg = grantItemsAndAnnounce(['key_piece_3']);
+          const successText = '톱니바퀴를 홈에 끼우자 서랍이 스르륵 열렸다.';
+          showDialogue(machineEntry.name, grantMsg ? `${successText} ${grantMsg}` : successText);
+          openMachineDrawer(found.obj);
+        },
+      });
+      markInspected(found.id);
+      return;
+    }
+
+    // M9-C 배치2: P5(조립머신) — 입력 없이 소지 여부만 보는 오브젝트
+    // 퍼즐(§3). 별도 완료 플래그 없이 rewardItems를 이미 갖고 있으면
+    // 그 자체가 "풀었다"는 뜻이다(아이템은 안 사라지므로).
     const objPuzzle = OBJECT_PUZZLES[found.id];
     if (objPuzzle) {
       const inv = getInventory();
@@ -259,7 +294,6 @@ export function initProbe(scene, camera, renderer, player) {
       }
       const grantMsg = grantItemsAndAnnounce(objPuzzle.rewardItems);
       showDialogue(entryName, grantMsg ? `${objPuzzle.successText} ${grantMsg}` : objPuzzle.successText);
-      if (found.id === 'bedB.machine') openMachineDrawer(found.obj);
       markInspected(found.id);
       return;
     }
@@ -275,8 +309,11 @@ export function initProbe(scene, camera, renderer, player) {
     // 랜턴 보유 여부·겹치기 토글은 전부 팝업 안에서 처리한다.
     if (entry.paperClue) {
       const puzzle = PUZZLES[entry.paperClue];
+      // M9-E(E-4, §12.5) — "랜턴을 비춘다"와 "판을 겹친다"를 별개 발견으로
+      // 나눈 부분: 팝업 상단 안내문도 UV 랜턴 보유 여부로 바뀐다(variants,
+      // entry.text가 없으니 fallback은 방어적 빈 문자열).
       showPaperModal({
-        promptText: entry.text,
+        promptText: resolveEntryText(entry, '', visitCount),
         hasLantern: getInventory().includes('uv_lantern'),
         answer: puzzle.answer,
       });
