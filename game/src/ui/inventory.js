@@ -1,12 +1,35 @@
 /* ------------------------------------------------------------------ *
- *  인벤토리 UI — M9-A에서는 껍데기만. 아이템 습득 로직 자체가 아직
- *  없으니(M9-B 이후) 항상 "비어 있음"만 보인다. 이미지 에셋은 안 쓰고
- *  이모지/CSS 도형만 쓴다(무빌드·오프라인 원칙 유지).
+ *  인벤토리 UI — 우하단 고정 아이콘 + 4×2 격자 패널(docs/spec/
+ *  M9-escape.md §5). 아이콘은 이모지만 쓴다(이미지 파일 금지, 무빌드·
+ *  오프라인 원칙 유지). 아이템 이름·설명·아이콘은 story.js ITEMS가
+ *  단일 원본이다 — 여기는 그걸 그리기만 한다.
  * ------------------------------------------------------------------ */
 import { getInventory, onChange } from '../story/state.js';
+import { ITEMS } from '../../story.js';
+import { showDialogue } from './dialogue.js';
+
+const SLOT_COUNT = 8; // 4×2, §5 — 아이템 최대 6개라 넉넉함
+
+function ensureStyle() {
+  if (document.getElementById('inventory-style')) return;
+  const style = document.createElement('style');
+  style.id = 'inventory-style';
+  // 새 아이템 획득 시 짧은 강조 애니메이션(§5).
+  style.textContent = `
+    @keyframes inv-pop {
+      0% { transform: scale(0.4); opacity: 0.3; }
+      60% { transform: scale(1.18); opacity: 1; }
+      100% { transform: scale(1); }
+    }
+    .inv-cell-pop { animation: inv-pop 0.4s ease; }
+  `;
+  document.head.appendChild(style);
+}
 
 export function initInventory() {
+  ensureStyle();
   let panelOpen = false;
+  const seenIds = new Set(); // 팝 애니메이션을 이미 보여준 id — 패널을 열 때마다 한 번씩만
 
   const btn = document.createElement('button');
   btn.id = 'inventory-btn';
@@ -36,15 +59,14 @@ export function initInventory() {
     position: 'fixed',
     right: '16px',
     bottom: 'calc(72px + env(safe-area-inset-bottom, 0px))',
-    width: 'min(240px, 80vw)',
-    minHeight: '100px',
+    // §5 — 모바일 세로 화면 폭 320px 상한.
+    width: 'min(320px, 80vw)',
     padding: '12px',
     boxSizing: 'border-box',
-    background: 'rgba(20, 14, 24, 0.85)',
+    background: 'rgba(20, 14, 24, 0.88)',
     color: '#fdf6ec',
     borderRadius: '12px',
     fontFamily: '-apple-system, "Pretendard", "Malgun Gothic", sans-serif',
-    fontSize: '13px',
     zIndex: '20',
     display: 'none',
     gridTemplateColumns: 'repeat(4, 1fr)',
@@ -54,22 +76,42 @@ export function initInventory() {
   function render() {
     const items = getInventory();
     panel.textContent = '';
-    if (items.length === 0) {
-      panel.style.alignItems = 'center';
-      panel.style.justifyContent = 'center';
-      const empty = document.createElement('div');
-      empty.textContent = '비어 있음';
-      empty.style.opacity = '0.55';
-      panel.appendChild(empty);
-    } else {
-      // M9-B 이후: 아이템별 이모지/도형 아이콘 그리드로 교체.
-      for (const id of items) {
-        const cell = document.createElement('div');
-        cell.textContent = id;
-        panel.appendChild(cell);
+    panel.style.display = panelOpen ? 'grid' : 'none';
+
+    for (let i = 0; i < SLOT_COUNT; i++) {
+      const id = items[i];
+      const cell = document.createElement('div');
+      Object.assign(cell.style, {
+        aspectRatio: '1',
+        borderRadius: '8px',
+        background: id ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.03)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: id ? 'pointer' : 'default',
+        minHeight: '44px', // 터치 타깃(§5 UI 원칙과 동일 기준)
+      });
+
+      if (id) {
+        const meta = ITEMS[id] || { name: id, icon: '❔', desc: id };
+        const icon = document.createElement('div');
+        icon.textContent = meta.icon;
+        icon.style.fontSize = '22px';
+        const label = document.createElement('div');
+        label.textContent = meta.name;
+        Object.assign(label.style, { fontSize: '9px', marginTop: '2px', opacity: '0.8', textAlign: 'center' });
+        cell.appendChild(icon);
+        cell.appendChild(label);
+        cell.addEventListener('click', () => showDialogue(meta.name, meta.desc || meta.name));
+
+        if (panelOpen && !seenIds.has(id)) {
+          cell.classList.add('inv-cell-pop');
+          seenIds.add(id);
+        }
       }
+      panel.appendChild(cell);
     }
-    panel.style.display = panelOpen ? (items.length === 0 ? 'flex' : 'grid') : 'none';
   }
 
   btn.addEventListener('click', () => {

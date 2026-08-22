@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import { TAG } from '../core/tags.js';
 import { INTERACTION_CONFIG } from '../../config.js';
-import { OBJECTS, LOCKS, PUZZLES } from '../../story.js';
+import { OBJECTS, LOCKS, PUZZLES, ITEMS } from '../../story.js';
 import { showDialogue } from '../ui/dialogue.js';
 import { showKeypadModal } from '../ui/modal.js';
-import { markInspected, isDoorUnlocked, unlockDoor } from '../story/state.js';
+import { showPaperModal } from '../ui/paperModal.js';
+import { markInspected, isDoorUnlocked, unlockDoor, getInventory, addItem } from '../story/state.js';
 import { rebuildFrom } from '../physics/colliders.js';
 
 /* ------------------------------------------------------------------ *
@@ -29,6 +30,18 @@ import { rebuildFrom } from '../physics/colliders.js';
 const _forward = new THREE.Vector3();
 const _toTarget = new THREE.Vector3();
 const _targetPos = new THREE.Vector3();
+
+// 아이템 여러 개를 한 번에 지급하고 "○○을(를) 얻었다" 안내문을 만든다.
+// 이미 갖고 있던 아이템은 다시 지급해도 안내문에 안 나온다(addItem이
+// 멱등이라 상태는 안 바뀌지만, 매번 "얻었다"고 알리면 이상하다).
+function grantItemsAndAnnounce(itemIds) {
+  if (!itemIds || itemIds.length === 0) return '';
+  const before = getInventory();
+  const newlyGranted = itemIds.filter((id) => !before.includes(id));
+  for (const id of itemIds) addItem(id);
+  if (newlyGranted.length === 0) return '';
+  return newlyGranted.map((id) => `${(ITEMS[id] && ITEMS[id].name) || id}을(를) 얻었다.`).join(' ');
+}
 
 export function initProbe(scene, camera, renderer, player) {
   const raycaster = new THREE.Raycaster();
@@ -102,10 +115,10 @@ export function initProbe(scene, camera, renderer, player) {
       return;
     }
 
-    // M9-B: 잠긴 문 패널 — id가 'lock_D2' 형식이면 대화창이 아니라 키패드
-    // 모달을 연다. 패널이 잠겨 있는 동안만 여기 도달한다 — 해제되면
-    // group.visible=false라 raycast가 애초에 이 오브젝트를 못 맞힌다
-    // (three.js Raycaster는 invisible 오브젝트를 건너뛴다).
+    // M9-B/C: 잠긴 문 패널 — id가 'lock_D1'..'lock_D4' 형식이면 대화창이
+    // 아니라 자물쇠 UI를 연다. 패널이 잠겨 있는 동안만 여기 도달한다
+    // (해제되면 group.visible=false라 raycast가 애초에 이 오브젝트를 못
+    // 맞힌다 — three.js Raycaster는 invisible 오브젝트를 건너뛴다).
     if (found.id.startsWith('lock_')) {
       const doorId = found.id.slice('lock_'.length);
       const lock = LOCKS[doorId];
@@ -115,17 +128,36 @@ export function initProbe(scene, camera, renderer, player) {
       }
       if (isDoorUnlocked(doorId)) return; // 방어적 — 위 이유로 보통 도달 안 함
       const puzzle = PUZZLES[lock.puzzle];
+
+      function unlockDoorPanel() {
+        const unlockPanel = found.obj.userData._unlockPanel;
+        if (unlockPanel) unlockPanel();
+        unlockDoor(doorId);
+        rebuildFrom(scene); // 콜라이더 재수집 — 패널 해제 절차의 마지막 단계
+      }
+
+      // D4처럼 코드 입력이 아니라 아이템 소지 여부만 보는 자물쇠(§3 P5의
+      // 결과물인 현관 열쇠). 모달을 아예 안 띄운다 — 입력할 게 없다.
+      if (puzzle.type === 'item') {
+        if (!getInventory().includes(puzzle.requiredItem)) {
+          showDialogue('', puzzle.wrongText);
+          return;
+        }
+        unlockDoorPanel();
+        showDialogue('', lock.unlockedText);
+        return;
+      }
+
       showKeypadModal({
+        type: puzzle.type,
         promptText: lock.lockedText,
         length: puzzle.length,
         answer: puzzle.answer,
         wrongText: puzzle.wrongText,
         onSuccess: () => {
-          const unlockPanel = found.obj.userData._unlockPanel;
-          if (unlockPanel) unlockPanel();
-          unlockDoor(doorId);
-          rebuildFrom(scene); // 콜라이더 재수집 — 패널 해제 절차의 마지막 단계
-          showDialogue('', lock.unlockedText);
+          unlockDoorPanel();
+          const grantMsg = grantItemsAndAnnounce(lock.rewardItems);
+          showDialogue('', grantMsg ? `${lock.unlockedText} ${grantMsg}` : lock.unlockedText);
         },
       });
       return;
@@ -136,7 +168,27 @@ export function initProbe(scene, camera, renderer, player) {
       console.warn('[probe] story.js OBJECTS에 없는 id:', found.id);
       return;
     }
-    showDialogue(entry.name, entry.text);
+
+    // P3 단서 — 백지/아크릴판 둘 다 같은 팝업을 연다(docs/spec/
+    // M9-escape.md §3 P3, §6.1). 3D에서는 "조사" 클릭까지만 하고, UV
+    // 랜턴 보유 여부·겹치기 토글은 전부 팝업 안에서 처리한다.
+    if (entry.paperClue) {
+      const puzzle = PUZZLES[entry.paperClue];
+      showPaperModal({
+        promptText: entry.text,
+        hasLantern: getInventory().includes('uv_lantern'),
+        answer: puzzle.answer,
+      });
+      markInspected(found.id);
+      return;
+    }
+
+    let text = entry.text;
+    if (entry.grantItems) {
+      const grantMsg = grantItemsAndAnnounce(entry.grantItems);
+      if (grantMsg) text = `${text} ${grantMsg}`;
+    }
+    showDialogue(entry.name, text);
     markInspected(found.id);
   }
 

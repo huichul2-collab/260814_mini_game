@@ -183,7 +183,10 @@ async function placeAndClick(interactiveId, offsetX, offsetZ) {
     player.root.position.set(px, 0, pz);
     player.root.rotation.y = facing;
 
-    await new Promise((r) => setTimeout(r, 700));
+    // 배치2부터 방을 넘나드는 큰 점프(예: 공방→거실)가 생겨 카메라
+    // 추적 감쇠(smoothTarget)가 수렴하는 데 700ms로는 부족한 경우가
+    // 실측으로 확인됐다(D3 클릭 좌표가 화면 밖으로 계산됨) — 여유를 둔다.
+    await new Promise((r) => setTimeout(r, 1200));
 
     const vector = clickPos.clone().project(window.__debug.camera);
     const canvas = document.querySelector('canvas');
@@ -338,6 +341,183 @@ check(
   collidersAfter === collidersBefore - 1,
   `이전=${collidersBefore} 이후=${collidersAfter}`
 );
+
+// ---------- 페이지 컨텍스트 헬퍼(배치2) ----------
+async function getInventory() {
+  return page.evaluate(async () => {
+    const state = await import('./src/story/state.js');
+    return state.getInventory();
+  });
+}
+
+const ARROW_ID = { '↑': 'up', '↓': 'down', '←': 'left', '→': 'right' };
+async function pressKeypad(type, str) {
+  for (const ch of str) {
+    let sel;
+    if (type === 'digits') sel = `#modal-digit-${ch}`;
+    else if (type === 'letters') sel = `#modal-letter-${ch}`;
+    else if (type === 'arrows') sel = `#modal-arrow-${ARROW_ID[ch]}`;
+    await page.click(sel);
+    await sleep(60);
+  }
+}
+
+// ---------- 9. 서재 일기장 조사 → UV 랜턴 + 열쇠조각1 획득 ----------
+console.log('\n--- 9. 일기장 조사 → 아이템 획득 ---');
+// officeChair(5.5,-0.9)가 desk(5.5,-1.55) 남쪽에 있어 남쪽에서 접근하면
+// 시야를 가린다 — 서쪽에서 접근한다.
+const diaryClick = await placeAndClick('study.diary', -1.0, 0);
+if (check('일기장 클릭 좌표 계산', diaryClick.ok, JSON.stringify(diaryClick))) {
+  await page.mouse.click(diaryClick.sx, diaryClick.sy);
+  await sleep(200);
+  const dlg = await page.evaluate(() => {
+    const text = document.getElementById('dialogue-text');
+    return text ? text.textContent : null;
+  });
+  check('일기장 조사 대화창에 "얻었다" 문구 포함', dlg && dlg.includes('얻었다'), `text="${dlg}"`);
+  await page.evaluate(() => { const b = document.getElementById('dialogue-box'); if (b) b.click(); });
+  await sleep(350);
+  const inv = await getInventory();
+  check('인벤토리에 uv_lantern 추가됨', inv.includes('uv_lantern'), JSON.stringify(inv));
+  check('인벤토리에 key_piece_1 추가됨', inv.includes('key_piece_1'), JSON.stringify(inv));
+} else {
+  failures += 3;
+}
+
+// ---------- 10~12. D1(방향 자물쇠, P2) — 오답→정답→공방 진입 ----------
+console.log('\n--- 10. D1 패널 클릭 → 화살표 모달 ---');
+// 정면(offsetZ만)으로 접근하면 카메라 시선(기본 -Z)과 일직선이 되어
+// 캐릭터 자신의 몸이 레이캐스트를 가린다 — 대각선으로 접근한다.
+const d1Click = await placeAndClick('lock_D1', 0.6, 1.0);
+check('D1 패널 클릭 좌표 계산', d1Click.ok, JSON.stringify(d1Click));
+if (d1Click.ok) await page.mouse.click(d1Click.sx, d1Click.sy);
+await sleep(200);
+const d1ModalOpen = await page.evaluate(() => !!document.getElementById('modal-overlay'));
+check('화살표 모달이 뜸', d1ModalOpen);
+
+console.log('\n--- 11. D1 오답(→→→→) 입력 ---');
+if (d1ModalOpen) {
+  await pressKeypad('arrows', '→→→→');
+  await sleep(200);
+  const afterWrong = await page.evaluate(() => {
+    const overlay = document.getElementById('modal-overlay');
+    const feedback = document.getElementById('modal-feedback');
+    return { stillOpen: !!overlay, feedbackText: feedback ? feedback.textContent : null };
+  });
+  check('오답 후 모달이 안 닫힘', afterWrong.stillOpen);
+  check('오답 안내(wrongText) 표시', afterWrong.feedbackText === PUZZLES.P2.wrongText, `실제="${afterWrong.feedbackText}"`);
+  const stillLocked = !(await isDoorUnlocked('D1'));
+  check('오답 후 D1 여전히 잠김 상태', stillLocked);
+} else {
+  failures += 3;
+}
+
+console.log('\n--- 12. D1 정답(↑↓←→) 입력 → 공방 진입 ---');
+const d1ModalStill = await page.evaluate(() => !!document.getElementById('modal-overlay'));
+if (d1ModalStill) {
+  await pressKeypad('arrows', PUZZLES.P2.answer);
+  await sleep(300);
+  const modalClosed = await page.evaluate(() => !document.getElementById('modal-overlay'));
+  check('정답 입력 후 모달이 닫힘', modalClosed);
+  const enteredBedA = await walkToward({ x: -1.5, z: -4.5 }, 6000);
+  check('정답 입력 후 실제로 걸어서 공방(Z<-3.3) 진입', enteredBedA.z < -3.3, `실제(${enteredBedA.x.toFixed(2)},${enteredBedA.z.toFixed(2)})`);
+} else {
+  failures += 2;
+  console.error('FAIL 12번 스킵 — 11번에서 모달이 이미 닫혀 있었음');
+}
+
+// ---------- 13. 공방 백지 조사 → P3 단서 팝업(UV 랜턴 보유 상태) ----------
+console.log('\n--- 13. 백지 조사 → 단서 팝업 ---');
+const paperClick = await placeAndClick('bedA.blankPaper', 0.6, 1.0);
+check('백지 클릭 좌표 계산', paperClick.ok, JSON.stringify(paperClick));
+if (paperClick.ok) {
+  await page.mouse.click(paperClick.sx, paperClick.sy);
+  await sleep(200);
+  const paperBefore = await page.evaluate(() => {
+    const overlay = document.getElementById('modal-overlay');
+    const paper = document.getElementById('modal-paper');
+    return { open: !!overlay, text: paper ? paper.textContent : null };
+  });
+  check('단서 팝업이 뜸', paperBefore.open);
+  check(
+    'UV 랜턴 보유 상태라 빈 종이가 아님(겹치기 전)',
+    paperBefore.text && paperBefore.text !== '빈 종이다.' && paperBefore.text !== PUZZLES.P3.answer,
+    `실제="${paperBefore.text}"`
+  );
+  await page.click('#modal-acrylic-toggle');
+  await sleep(150);
+  const paperAfter = await page.evaluate(() => {
+    const paper = document.getElementById('modal-paper');
+    return paper ? paper.textContent : null;
+  });
+  check('아크릴판 겹치면 정답(TRUTH)만 보임', paperAfter === PUZZLES.P3.answer, `실제="${paperAfter}"`);
+  await page.evaluate(() => { const b = document.getElementById('modal-close'); if (b) b.click(); });
+  await sleep(200);
+} else {
+  failures += 3;
+}
+
+// D3는 거실 남벽에 있다 — 그 벽 안쪽(거실)에 서면 카메라의 기본 시선
+// (yaw=0, 항상 플레이어 뒤쪽 +Z)이 벽을 뚫고 나가는 방향이라
+// followCamera.js의 벽 충돌 로직이 패널 코앞까지 카메라를 당겨버려
+// screen-projection이 깨진다(실측 확인). 드래그로 yaw를 180도 돌려
+// 카메라가 벽 반대쪽(거실 안쪽)에 있게 만든다 — 걷기는 카메라 yaw
+// 기준이라(controller.js) 볼일이 끝나면 반드시 원래대로 돌려놔야 한다.
+const YAW_FLIP_DX = 524; // Δyaw=π가 되는 드래그 픽셀량(dragSensitivity=0.006 기준 실측)
+async function dragYawBy(dxPixels) {
+  await page.mouse.move(700, 300);
+  await page.mouse.down();
+  await page.mouse.move(700 + dxPixels, 300, { steps: 5 });
+  await page.mouse.up();
+  await sleep(50);
+}
+
+// ---------- 14~15. D3(영어 자물쇠, P3) — 정답 입력 → 보관소 진입 ----------
+console.log('\n--- 14. D3 패널 클릭 → 알파벳 모달 ---');
+const d3Click0 = await placeAndClick('lock_D3', 0.6, -1.0);
+await dragYawBy(-YAW_FLIP_DX); // 카메라를 벽 반대쪽으로
+await sleep(1200); // 카메라 감쇠가 새 yaw로 다시 수렴할 시간
+const d3Click = await page.evaluate(async ({ interactiveId }) => {
+  const { TAG } = await import('./src/core/tags.js');
+  const THREE = window.__debug.THREE;
+  let target = null;
+  window.__debug.scene.traverse((o) => { if (!target && o.userData && o.userData[TAG.INTERACTIVE] === interactiveId) target = o; });
+  if (!target) return { ok: false, reason: 'target-not-found' };
+  const tPos = new THREE.Vector3();
+  target.getWorldPosition(tPos);
+  const box = new THREE.Box3().setFromObject(target);
+  const clickPos = box.isEmpty() ? tPos : box.getCenter(new THREE.Vector3());
+  const vector = clickPos.clone().project(window.__debug.camera);
+  const canvas = document.querySelector('canvas');
+  const rect = canvas.getBoundingClientRect();
+  const sx = (vector.x * 0.5 + 0.5) * rect.width + rect.left;
+  const sy = (-vector.y * 0.5 + 0.5) * rect.height + rect.top;
+  return { ok: true, sx, sy };
+}, { interactiveId: 'lock_D3' });
+check('D3 패널 클릭 좌표 계산', d3Click0.ok && d3Click.ok, JSON.stringify({ d3Click0, d3Click }));
+if (d3Click.ok) await page.mouse.click(d3Click.sx, d3Click.sy);
+await sleep(200);
+const d3ModalOpen = await page.evaluate(() => !!document.getElementById('modal-overlay'));
+check('알파벳 모달이 뜸', d3ModalOpen);
+
+console.log('\n--- 15. D3 정답(TRUTH) 입력 → 보관소 진입 + 보상 획득 ---');
+if (d3ModalOpen) {
+  await pressKeypad('letters', PUZZLES.P3.answer);
+  await sleep(300);
+  const modalClosed = await page.evaluate(() => !document.getElementById('modal-overlay'));
+  check('정답 입력 후 모달이 닫힘', modalClosed);
+  const invAfterD3 = await getInventory();
+  check('D3 해제 보상으로 gear 획득', invAfterD3.includes('gear'), JSON.stringify(invAfterD3));
+  check('D3 해제 보상으로 key_piece_2 획득', invAfterD3.includes('key_piece_2'), JSON.stringify(invAfterD3));
+  await dragYawBy(YAW_FLIP_DX); // 카메라 yaw 원상복구 — 이후 걷기는 yaw=0 기준
+  await sleep(1200);
+  const enteredBedB = await walkToward({ x: 0, z: 4.5 }, 6000);
+  check('정답 입력 후 실제로 걸어서 보관소(Z>3.3) 진입', enteredBedB.z > 3.3, `실제(${enteredBedB.x.toFixed(2)},${enteredBedB.z.toFixed(2)})`);
+} else {
+  failures += 4;
+  await dragYawBy(YAW_FLIP_DX); // 실패해도 yaw는 복구 — 이후 단계가 계속 깨지는 걸 막는다
+  await sleep(1200);
+}
 
 await browser.close();
 server.close();

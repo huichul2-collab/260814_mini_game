@@ -33,12 +33,18 @@ export const OBJECTS = {
   },
   'living.assembler': { name: '조립 머신', text: '홈이 세 개 뚫려 있다. 뭔가를 끼워야 할 것 같다.' },
 
-  'study.diary': { name: '일기장', text: '펼쳐진 채로 놓여 있다. 손글씨가 빼곡하다.' },
+  'study.diary': {
+    name: '일기장',
+    text: '펼쳐진 채로 놓여 있다. "하늘 · 땅 · 심장 · 바른손" — 무슨 순서인지 적혀 있다.',
+    grantItems: ['uv_lantern', 'key_piece_1'], // §2 — 서재 조사의 보상 두 가지, 한 번에 지급
+  },
   'study.keyPiece1': { name: '열쇠 조각', text: '금속으로 된 조각. 무언가의 일부처럼 보인다.' },
 
   'bedA.workbench': { name: '작업대', text: '공구 자국이 가득한 낡은 작업대.' },
-  'bedA.blankPaper': { name: '백지', text: '아무것도 적혀 있지 않은 종이다.' },
-  'bedA.acrylicPanel': { name: '아크릴판', text: '구멍이 뚫린 투명한 판. 뭔가를 겹쳐 보라는 뜻 같다.' },
+  // P3 단서 — 두 오브젝트 모두 같은 팝업을 연다(paperModal.js). §6.1대로
+  // "UV를 비춘다/판을 겹친다"는 3D가 아니라 2D 팝업 안에서 처리한다.
+  'bedA.blankPaper': { name: '백지', text: '아무것도 적혀 있지 않은 종이다.', paperClue: 'P3' },
+  'bedA.acrylicPanel': { name: '아크릴판', text: '구멍이 뚫린 투명한 판. 뭔가를 겹쳐 보라는 뜻 같다.', paperClue: 'P3' },
   'bedA.keyPiece2': { name: '열쇠 조각', text: '작업대 위에 놓인 금속 조각.' },
 
   'bedB.machine': { name: '기계 장치', text: '가운데 홈이 비어 있다. 톱니바퀴가 필요해 보인다.' },
@@ -52,6 +58,19 @@ export const OBJECTS = {
   'bedB.cabinet': { name: '캐비닛', text: '오래된 캐비닛이다.' },
   'bedB.crateStack': { name: '상자 더미', text: '아무렇게나 쌓아둔 상자들이다.' },
   'bedB.oldRug': { name: '낡은 러그', text: '빛바랜 러그다.' },
+};
+
+// M9-C 배치2: 인벤토리 아이템 6종(§4). icon은 이모지만 쓴다(§5 — 이미지
+// 파일 금지, 무빌드·오프라인 원칙). key_piece_1~3은 이름이 같지만
+// id는 서로 다르다 — 인벤토리에 3칸 따로 쌓인다("몇 개 남았는지 셀 수
+// 있다"는 §4의 의도).
+export const ITEMS = {
+  uv_lantern: { name: 'UV 랜턴', icon: '🔦', desc: '자외선을 비추는 손전등. 숨겨진 글자를 드러낼 수 있을 것 같다.' },
+  gear: { name: '철제 톱니바퀴', icon: '⚙️', desc: '이빨이 촘촘한 톱니바퀴. 뭔가의 홈에 끼우는 부품 같다.' },
+  key_piece_1: { name: '열쇠 조각', icon: '🧩', desc: '열쇠의 일부로 보이는 금속 조각. 서재에서 찾았다.' },
+  key_piece_2: { name: '열쇠 조각', icon: '🧩', desc: '열쇠의 일부로 보이는 금속 조각. 공방에서 찾았다.' },
+  key_piece_3: { name: '열쇠 조각', icon: '🧩', desc: '열쇠의 일부로 보이는 금속 조각. 보관소에서 찾았다.' },
+  front_key: { name: '현관 열쇠', icon: '🔑', desc: '조각 세 개를 조립해 완성한 열쇠. 현관문에 맞을 것 같다.' },
 };
 
 // M9-C 배치2: 문 4개 전부 잠근다(§10.1 예고대로 M9-B는 D2 하나였다).
