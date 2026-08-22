@@ -13,7 +13,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer-core';
-import { CLOCK_TIME, PUZZLES } from '../../game/story.js';
+import { CLOCK_TIME, PUZZLES, ENDING_TEXT } from '../../game/story.js';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const gameDir = path.resolve(process.argv[2] || path.join(scriptDir, '..', '..', 'game'));
@@ -472,28 +472,36 @@ async function dragYawBy(dxPixels) {
   await sleep(50);
 }
 
+// placeAndClick()은 텔레포트 "직후"(카메라가 아직 안 움직인) 좌표를 쓴다 —
+// yaw를 드래그로 돌리고 카메라가 다시 수렴하길 기다린 *뒤에* 좌표를 다시
+// 계산해야 하는 경우(D3/기계장치/조립머신) 이 함수로 현재 카메라 기준
+// 좌표만 새로 뽑는다(텔레포트는 이미 placeAndClick이 해준 뒤).
+async function computeClickCoords(interactiveId) {
+  return page.evaluate(async ({ interactiveId }) => {
+    const { TAG } = await import('./src/core/tags.js');
+    const THREE = window.__debug.THREE;
+    let target = null;
+    window.__debug.scene.traverse((o) => { if (!target && o.userData && o.userData[TAG.INTERACTIVE] === interactiveId) target = o; });
+    if (!target) return { ok: false, reason: 'target-not-found' };
+    const tPos = new THREE.Vector3();
+    target.getWorldPosition(tPos);
+    const box = new THREE.Box3().setFromObject(target);
+    const clickPos = box.isEmpty() ? tPos : box.getCenter(new THREE.Vector3());
+    const vector = clickPos.clone().project(window.__debug.camera);
+    const canvas = document.querySelector('canvas');
+    const rect = canvas.getBoundingClientRect();
+    const sx = (vector.x * 0.5 + 0.5) * rect.width + rect.left;
+    const sy = (-vector.y * 0.5 + 0.5) * rect.height + rect.top;
+    return { ok: true, sx, sy };
+  }, { interactiveId });
+}
+
 // ---------- 14~15. D3(영어 자물쇠, P3) — 정답 입력 → 보관소 진입 ----------
 console.log('\n--- 14. D3 패널 클릭 → 알파벳 모달 ---');
 const d3Click0 = await placeAndClick('lock_D3', 0.6, -1.0);
 await dragYawBy(-YAW_FLIP_DX); // 카메라를 벽 반대쪽으로
 await sleep(1200); // 카메라 감쇠가 새 yaw로 다시 수렴할 시간
-const d3Click = await page.evaluate(async ({ interactiveId }) => {
-  const { TAG } = await import('./src/core/tags.js');
-  const THREE = window.__debug.THREE;
-  let target = null;
-  window.__debug.scene.traverse((o) => { if (!target && o.userData && o.userData[TAG.INTERACTIVE] === interactiveId) target = o; });
-  if (!target) return { ok: false, reason: 'target-not-found' };
-  const tPos = new THREE.Vector3();
-  target.getWorldPosition(tPos);
-  const box = new THREE.Box3().setFromObject(target);
-  const clickPos = box.isEmpty() ? tPos : box.getCenter(new THREE.Vector3());
-  const vector = clickPos.clone().project(window.__debug.camera);
-  const canvas = document.querySelector('canvas');
-  const rect = canvas.getBoundingClientRect();
-  const sx = (vector.x * 0.5 + 0.5) * rect.width + rect.left;
-  const sy = (-vector.y * 0.5 + 0.5) * rect.height + rect.top;
-  return { ok: true, sx, sy };
-}, { interactiveId: 'lock_D3' });
+const d3Click = await computeClickCoords('lock_D3');
 check('D3 패널 클릭 좌표 계산', d3Click0.ok && d3Click.ok, JSON.stringify({ d3Click0, d3Click }));
 if (d3Click.ok) await page.mouse.click(d3Click.sx, d3Click.sy);
 await sleep(200);
@@ -518,6 +526,90 @@ if (d3ModalOpen) {
   await dragYawBy(YAW_FLIP_DX); // 실패해도 yaw는 복구 — 이후 단계가 계속 깨지는 걸 막는다
   await sleep(1200);
 }
+
+// ---------- 16. 보관소 기계장치 조사 → 서랍 열림 + 열쇠조각3 획득 ----------
+console.log('\n--- 16. 기계장치 조사 → 서랍 열림 ---');
+// 기계장치는 방 한가운데지만 보관소가 좁아(4x4) 접근 가능한 자리가
+// 전부 남벽에 가깝다 — 남쪽에서 접근하면 카메라가 벽에 눌려 코앞까지
+// 당겨지고, 심지어 캐릭터 자기 몸이 레이캐스트를 가린다(실측 확인).
+// D3와 같은 이유로 yaw를 반전해 카메라를 반대쪽(문 쪽)에 둔다.
+const machineClick0 = await placeAndClick('bedB.machine', 0.6, 1.0);
+await dragYawBy(-YAW_FLIP_DX);
+await sleep(1200);
+const machineClick = await computeClickCoords('bedB.machine');
+check('기계장치 클릭 좌표 계산', machineClick0.ok && machineClick.ok, JSON.stringify({ machineClick0, machineClick }));
+if (machineClick.ok) {
+  await page.mouse.click(machineClick.sx, machineClick.sy);
+  await sleep(200);
+  const dlg = await page.evaluate(() => {
+    const text = document.getElementById('dialogue-text');
+    return text ? text.textContent : null;
+  });
+  check('기계장치 조사 대화창에 "얻었다" 문구 포함', dlg && dlg.includes('얻었다'), `text="${dlg}"`);
+  await page.evaluate(() => { const b = document.getElementById('dialogue-box'); if (b) b.click(); });
+  await sleep(800); // 서랍 슬라이드 애니메이션(0.6s)이 끝날 때까지
+  const invAfterMachine = await getInventory();
+  check('기계장치 해결 보상으로 key_piece_3 획득', invAfterMachine.includes('key_piece_3'), JSON.stringify(invAfterMachine));
+  const drawerZ = await page.evaluate(() => {
+    let machine = null;
+    window.__debug.scene.traverse((o) => { if (!machine && o.userData && o.userData['interactive'] === 'bedB.machine') machine = o; });
+    if (!machine) return null;
+    const drawer = machine.getObjectByName('machineDrawer');
+    return drawer ? drawer.position.z : null;
+  });
+  check('서랍이 실제로 Z- 방향 슬라이드함(위치 변화)', drawerZ !== null && drawerZ < -0.001, `drawer.position.z=${drawerZ}`);
+} else {
+  failures += 3;
+}
+await dragYawBy(YAW_FLIP_DX); // 원상복구 — 다음 걷기가 yaw=0 기준
+await sleep(1200);
+
+// ---------- 17. 거실 조립머신 조사 → 현관 열쇠 획득 ----------
+console.log('\n--- 17. 조립머신 조사 → 현관 열쇠 획득 ---');
+// 조립머신은 거실 남벽에 붙어 있어 D3와 같은 이유로 카메라 벽 충돌이
+// 생긴다 — 같은 방식(yaw 180도 반전)으로 우회한다.
+const assemblerClick0 = await placeAndClick('living.assembler', 0.6, -1.0);
+await dragYawBy(-YAW_FLIP_DX);
+await sleep(1200);
+const assemblerClick = await computeClickCoords('living.assembler');
+check('조립머신 클릭 좌표 계산', assemblerClick0.ok && assemblerClick.ok, JSON.stringify({ assemblerClick0, assemblerClick }));
+if (assemblerClick.ok) await page.mouse.click(assemblerClick.sx, assemblerClick.sy);
+await sleep(200);
+const dlgAssembler = await page.evaluate(() => {
+  const text = document.getElementById('dialogue-text');
+  return text ? text.textContent : null;
+});
+check('조립머신 조사 대화창에 "얻었다" 문구 포함', dlgAssembler && dlgAssembler.includes('얻었다'), `text="${dlgAssembler}"`);
+await page.evaluate(() => { const b = document.getElementById('dialogue-box'); if (b) b.click(); });
+await sleep(350);
+const invAfterAssembler = await getInventory();
+check('조립 보상으로 front_key 획득', invAfterAssembler.includes('front_key'), JSON.stringify(invAfterAssembler));
+await dragYawBy(YAW_FLIP_DX); // 원상복구
+await sleep(1200);
+
+// ---------- 18. D4 패널 조사 → 현관 열쇠 소지 판정(모달 없음) → 해제 ----------
+console.log('\n--- 18. D4 패널 조사 → 해제(아이템 판정) ---');
+const d4Click = await placeAndClick('lock_D4', 1.0, 0);
+check('D4 패널 클릭 좌표 계산', d4Click.ok, JSON.stringify(d4Click));
+if (d4Click.ok) await page.mouse.click(d4Click.sx, d4Click.sy);
+await sleep(200);
+const d4Unlocked = await isDoorUnlocked('D4');
+check('D4가 현관 열쇠로 즉시 해제됨(모달 없이)', d4Unlocked);
+const modalAfterD4 = await page.evaluate(() => !!document.getElementById('modal-overlay'));
+check('D4는 아이템 판정이라 키패드 모달을 안 띄움', !modalAfterD4);
+
+// ---------- 19. 마당 진입 → 엔딩 대사(최종 완료 조건) ----------
+console.log('\n--- 19. 마당 진입 → 엔딩(시작→탈출 전 구간 클리어) ---');
+const enteredYard = await walkToward({ x: -5.0, z: 0 }, 9000);
+check('D4를 통과해 실제로 마당(YARD, X<-3) 진입', enteredYard.x < -3, `실제(${enteredYard.x.toFixed(2)},${enteredYard.z.toFixed(2)})`);
+await sleep(200);
+const endingDlg = await page.evaluate(async () => {
+  const state = await import('./src/story/state.js');
+  const text = document.getElementById('dialogue-text');
+  return { shown: state.hasFlag('ending:shown'), text: text ? text.textContent : null };
+});
+check('엔딩 플래그가 켜짐', endingDlg.shown);
+check('엔딩 대사가 정확히 표시됨', endingDlg.text === ENDING_TEXT, `실제="${endingDlg.text}"`);
 
 await browser.close();
 server.close();

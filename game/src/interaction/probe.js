@@ -1,12 +1,13 @@
 import * as THREE from 'three';
 import { TAG } from '../core/tags.js';
 import { INTERACTION_CONFIG } from '../../config.js';
-import { OBJECTS, LOCKS, PUZZLES, ITEMS } from '../../story.js';
+import { OBJECTS, LOCKS, PUZZLES, ITEMS, OBJECT_PUZZLES } from '../../story.js';
 import { showDialogue } from '../ui/dialogue.js';
 import { showKeypadModal } from '../ui/modal.js';
 import { showPaperModal } from '../ui/paperModal.js';
 import { markInspected, isDoorUnlocked, unlockDoor, getInventory, addItem } from '../story/state.js';
 import { rebuildFrom } from '../physics/colliders.js';
+import { onFrame } from '../core/loop.js';
 
 /* ------------------------------------------------------------------ *
  *  가까운 사물을 좌클릭하면 하단에 설명이 뜬다(M9-A 완료 조건 전체).
@@ -41,6 +42,25 @@ function grantItemsAndAnnounce(itemIds) {
   for (const id of itemIds) addItem(id);
   if (newlyGranted.length === 0) return '';
   return newlyGranted.map((id) => `${(ITEMS[id] && ITEMS[id].name) || id}을(를) 얻었다.`).join(' ');
+}
+
+// P4(기계장치 서랍) 전용 — Z- 방향으로 슬라이드해 열리는 연출(docs/spec/
+// M9-escape.md §7 "숨은 서랍 ... 열리면 위치만 이동"). onFrame은 등록 해제
+// API가 없어(core/loop.js) lamp.js의 펄스 애니메이션과 같은 패턴으로,
+// 목표 시간에 도달하면 그 뒤로는 아무 것도 안 하는 콜백을 영구 등록한다.
+function openMachineDrawer(machineGroup) {
+  const drawer = machineGroup.getObjectByName('machineDrawer');
+  if (!drawer || drawer.userData._opened) return;
+  drawer.userData._opened = true;
+  const startZ = drawer.position.z;
+  const targetZ = startZ - 0.18;
+  const duration = 0.6;
+  let t = 0;
+  onFrame((dt) => {
+    if (t >= duration) return;
+    t = Math.min(t + dt, duration);
+    drawer.position.z = startZ + (targetZ - startZ) * (t / duration);
+  });
 }
 
 export function initProbe(scene, camera, renderer, player) {
@@ -160,6 +180,31 @@ export function initProbe(scene, camera, renderer, player) {
           showDialogue('', grantMsg ? `${lock.unlockedText} ${grantMsg}` : lock.unlockedText);
         },
       });
+      return;
+    }
+
+    // M9-C 배치2: P4(기계장치)·P5(조립머신) — 입력 없이 소지 여부만
+    // 보는 오브젝트 퍼즐(§3). 별도 완료 플래그 없이 rewardItems를 이미
+    // 갖고 있으면 그 자체가 "풀었다"는 뜻이다(아이템은 안 사라지므로).
+    const objPuzzle = OBJECT_PUZZLES[found.id];
+    if (objPuzzle) {
+      const inv = getInventory();
+      const entryName = (OBJECTS[found.id] && OBJECTS[found.id].name) || '';
+      const already = objPuzzle.rewardItems.every((id) => inv.includes(id));
+      if (already) {
+        showDialogue(entryName, objPuzzle.alreadyText);
+        markInspected(found.id);
+        return;
+      }
+      const hasAll = objPuzzle.requiredItems.every((id) => inv.includes(id));
+      if (!hasAll) {
+        showDialogue(entryName, objPuzzle.missingText);
+        return;
+      }
+      const grantMsg = grantItemsAndAnnounce(objPuzzle.rewardItems);
+      showDialogue(entryName, grantMsg ? `${objPuzzle.successText} ${grantMsg}` : objPuzzle.successText);
+      if (found.id === 'bedB.machine') openMachineDrawer(found.obj);
+      markInspected(found.id);
       return;
     }
 

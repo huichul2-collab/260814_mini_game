@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { renderer, scene, camera } from './src/core/context.js';
-import { tick } from './src/core/loop.js';
+import { tick, onFrame, Phase } from './src/core/loop.js';
+import { checkEnding } from './src/story/ending.js';
 import { createSkyDome, setupFog } from './src/render/sky.js';
 import { setupLighting } from './src/render/lighting.js';
 import { createHouse } from './src/world/house.js';
@@ -53,6 +54,7 @@ const followCam = createFollowCamera(camera, renderer.domElement, player.root.po
 initController(player, followCam.getYaw);
 initProbe(scene, camera, renderer, player); // M9-A: 가까운 사물 좌클릭 → 하단 설명
 initInventory();
+onFrame(() => checkEnding(player.root.position), Phase.LATE); // M9-C: 마당 첫 진입 시 종료 대사
 
 // 디버그 훅 — 헤드리스 검증 스크립트가 위치/카메라/씬 상태를 직접 읽는 용도.
 // 프로덕션 동작에는 관여하지 않는다. scene/THREE/rooms는 tools/render-check/

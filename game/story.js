@@ -130,6 +130,32 @@ export const PUZZLES = {
   },
 };
 
+// M9-C 배치2: 문 잠금이 아니라 "아이템 소지 여부"로 풀리는 오브젝트
+// 퍼즐 2개(P4, P5) — §3. 입력 UI가 없어 LOCKS/PUZZLES 구조를 그대로
+// 쓰기엔 안 맞아서(door 하나에 물리는 게 아니라 오브젝트 자체가
+// 대상) 별도 테이블로 둔다. rewardItems는 이미 소지 여부 자체가
+// "풀었다"의 표시라 별도 완료 플래그가 필요 없다(§2 막힘 방지 원칙과
+// 같은 이유 — 아이템은 안 사라진다).
+export const OBJECT_PUZZLES = {
+  'bedB.machine': {
+    requiredItems: ['gear'],
+    missingText: '톱니바퀴가 필요해 보인다.',
+    successText: '톱니바퀴를 홈에 끼우자 서랍이 스르륵 열렸다.',
+    alreadyText: '서랍이 열려 있다. 안은 비어 있다.',
+    rewardItems: ['key_piece_3'],
+  },
+  'living.assembler': {
+    requiredItems: ['key_piece_1', 'key_piece_2', 'key_piece_3'],
+    missingText: '아직 열쇠 조각이 다 모이지 않았다.',
+    successText: '조각 세 개를 끼우자 열쇠가 완성됐다.',
+    alreadyText: '이미 조립을 마쳤다.',
+    rewardItems: ['front_key'],
+  },
+};
+
+// M9-C 배치2 — D4로 마당에 들어간 순간 한 번만 뜨는 종료 대사.
+export const ENDING_TEXT = '차가운 바깥 공기가 느껴진다. 드디어 이 집을 빠져나왔다.';
+
 // M9-A 시점에는 자리만 만들어둔다 — 오프닝 연출은 M9-B 이후 붙는다.
 // 채워둔 두 줄은 예시이며, 실제 오프닝 도입 시 이 배열을 그대로 쓰거나
 // 바꿔써도 된다.
