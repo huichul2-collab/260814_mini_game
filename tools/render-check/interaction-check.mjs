@@ -1,6 +1,12 @@
 #!/usr/bin/env node
 // M9-A 검증 — "가까운 사물을 좌클릭하면 하단에 설명이 뜬다"가 완료 조건 전체다.
 //
+//   시작. furniture.js의 모든 항목이 id를 갖는가(순수 node, 브라우저 불필요).
+//      ⭐ id가 없는 오브젝트는 씬에 태그가 안 붙어서 아래 1번(씬↔story.js
+//      대조) 목록에 애초에 안 잡힌다 — "검사 목록에 없어서 통과"를 막는
+//      부재 검사다. 서재 배경 가구 6개가 이 구멍으로 클릭 불가 상태로
+//      남아있던 사고 이후 추가(2026-08-23). 의도적으로 id를 안 붙일
+//      오브젝트가 생기면 그때 화이트리스트를 만든다 — 지금은 예외 없음.
 //   0. room-tint-check.mjs와 같은 절대 하한(휘도/검정비율/최대픽셀) — 검은
 //      화면 렌더 실패를 다른 검사보다 먼저 잡는다.
 //   1. 씬의 TAG.INTERACTIVE id 전부가 story.js OBJECTS에 대응 키가 있는지
@@ -14,6 +20,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer-core';
+import { FURNITURE } from '../../game/furniture.js';
 
 const gameDir = path.resolve(process.argv[2] || 'game');
 const outDir = path.resolve(process.argv[3] || 'tools/render-check');
@@ -48,6 +55,19 @@ function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
 const failures = [];
 const warnings = [];
+
+// ---------- 시작. furniture.js 전 항목이 id를 갖는가(순수 node) ----------
+console.log('--- 시작. furniture.js id 부재 검사 ---');
+{
+  const missing = FURNITURE.filter((item) => !item.id);
+  if (missing.length) {
+    const labels = missing.map((item) => `${item.room}.${item.type}`);
+    console.error(`FAIL: id 없는 furniture.js 항목 ${missing.length}개 — ${labels.join(', ')}`);
+    failures.push(`furniture.js id 누락: ${labels.join(', ')}`);
+  } else {
+    console.log(`OK   furniture.js ${FURNITURE.length}개 항목 전부 id 보유`);
+  }
+}
 
 const server = await serve(gameDir);
 const port = server.address().port;

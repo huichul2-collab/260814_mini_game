@@ -40,6 +40,17 @@ export const OBJECTS = {
   },
   'study.keyPiece1': { name: '열쇠 조각', text: '금속으로 된 조각. 무언가의 일부처럼 보인다.' },
 
+  // 서재 배경 가구 6개 — 순수 배경 소품(퍼즐 무관). P2 단서(일기장)를
+  // 가리지 않게 짧고 담백하게. 특히 책장은 "빼곡하다" 정도로만 —
+  // 여기 또 다른 단서가 있는 것처럼 오해하게 만들지 않는다(가짜 단서는
+  // 플레이어를 지치게 한다).
+  'study.desk': { name: '책상', text: '서류 몇 장이 놓인 책상이다.' },
+  'study.chair': { name: '의자', text: '바퀴 달린 사무용 의자다.' },
+  'study.bookshelf': { name: '책장', text: '책이 빼곡하다.' },
+  'study.armchair': { name: '안락의자', text: '구석에 놓인 안락의자다.' },
+  'study.teaTable': { name: '찻상', text: '작은 탁자다.' },
+  'study.rug': { name: '러그', text: '바닥에 깔린 러그다.' },
+
   'bedA.workbench': { name: '작업대', text: '공구 자국이 가득한 낡은 작업대.' },
   // P3 단서 — 두 오브젝트 모두 같은 팝업을 연다(paperModal.js). §6.1대로
   // "UV를 비춘다/판을 겹친다"는 3D가 아니라 2D 팝업 안에서 처리한다.

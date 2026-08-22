@@ -43,12 +43,15 @@ export const FURNITURE = [
   { id: 'bedA.crate2', room: 'bedA', type: 'crate', pos: [1.2, 0, -4.0], rotY: Math.PI / 6 },
 
   // ---------- 작업실 (study) ----------
-  { id: null, room: 'study', type: 'studyDesk', pos: [5.5, 0, -1.55], rotY: 0 },
-  { id: null, room: 'study', type: 'officeChair', pos: [5.5, 0, -0.9], rotY: 0 },
-  { id: null, room: 'study', type: 'largeBookshelf', pos: [6.65, 0, 0.8], rotY: 0 },
-  { id: null, room: 'study', type: 'armchair', pos: [4.2, 0, 2.45], rotY: 0 },
-  { id: null, room: 'study', type: 'teaTable', pos: [5.15, 0.225, 2.45], rotY: 0 },
-  { id: null, room: 'study', type: 'rectRug', pos: [5.2, 0.01, 0.3], rotY: 0 },
+  // 배경 가구 6개 — M9-A "study는 나중에" / M9-C "study는 손대지 마라"
+  // 사이에서 id 부여 단계가 통째로 빠져 있었다(클릭 불가 버그). 좌표·
+  // 조형은 그대로, id만 추가한다.
+  { id: 'study.desk', room: 'study', type: 'studyDesk', pos: [5.5, 0, -1.55], rotY: 0 },
+  { id: 'study.chair', room: 'study', type: 'officeChair', pos: [5.5, 0, -0.9], rotY: 0 },
+  { id: 'study.bookshelf', room: 'study', type: 'largeBookshelf', pos: [6.65, 0, 0.8], rotY: 0 },
+  { id: 'study.armchair', room: 'study', type: 'armchair', pos: [4.2, 0, 2.45], rotY: 0 },
+  { id: 'study.teaTable', room: 'study', type: 'teaTable', pos: [5.15, 0.225, 2.45], rotY: 0 },
+  { id: 'study.rug', room: 'study', type: 'rectRug', pos: [5.2, 0.01, 0.3], rotY: 0 },
   { id: 'study.diary', room: 'study', type: 'diary', pos: [5.35, 0.78, -1.50], rotY: 0 }, // §11.2 — studyDesk 상판 위
   { id: 'study.keyPiece1', room: 'study', type: 'keyPiece', pos: [6.60, 1.05, 0.80], rotY: 0 }, // §11.2 — largeBookshelf 선반 위
 
