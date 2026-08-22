@@ -331,12 +331,17 @@ console.log('');
 //     빈 박스로 걸러지지만, 안에 든 상자 2개(bottom/top)는 각자
 //     지오메트리가 있어 개별 집계됨 → 항목 1개가 2개로 바뀌어 순증 +1
 // 30 + 2(시계) + 2(기계장치) + 1(상자 더미) = 35.
-const EXPECTED_PROP_NODES = 35;
+// M9-E E-3(2026-08-23): furniture.js 최상위 항목이 31개로 늘었다
+// (study.cabinet 추가) + 그 자식 신문 스크랩 그룹(newsClippings, 자기
+// 지오메트리는 없지만 안의 스크랩 3장 메시가 있어 빈 박스로 안 걸러짐,
+// machine.js의 drawer와 같은 패턴) → +1.
+// 31 + 2(시계) + 2(기계장치) + 1(상자 더미) + 1(신문 스크랩) = 37.
+const EXPECTED_PROP_NODES = 37;
 if (results.length !== EXPECTED_PROP_NODES) {
   console.error(`FAIL: 소품/하위노드 총 개수 오차 — 기대값 ${EXPECTED_PROP_NODES}개, 실제 ${results.length}개`);
   process.exit(1);
 }
 
-console.log(`OK   소품/하위노드 총 개수 ${results.length}개 정확히 일치(furniture.js 최상위 30개 + 시계 하위 2개 + 기계장치 하위 2개 + 상자더미 순증 1개)`);
+console.log(`OK   소품/하위노드 총 개수 ${results.length}개 정확히 일치(furniture.js 최상위 31개 + 시계 하위 2개 + 기계장치 하위 2개 + 상자더미 순증 1개 + 신문스크랩 하위 1개)`);
 console.log(warnings === 0 ? '경고 없음' : `경고 ${warnings}건 — 최종 판단은 사람이 할 것`);
 process.exit(0);
