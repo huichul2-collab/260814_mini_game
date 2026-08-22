@@ -91,6 +91,8 @@ process.on('SIGINT', async () => {
 });
 
 const results = [];
+let desktopJoystick = { visible: false };
+let desktopNotice = false;
 
 try {
 for (const vp of VIEWPORTS) {
@@ -368,14 +370,14 @@ const desktopPage = await browser.newPage();
 await desktopPage.setViewport({ width: 960, height: 600, isMobile: false, hasTouch: false });
 await desktopPage.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'load', timeout: 20000 });
 await sleep(300);
-const desktopNotice = await desktopPage.evaluate(() => !!document.getElementById('mobile-notice'));
+desktopNotice = await desktopPage.evaluate(() => !!document.getElementById('mobile-notice'));
 await desktopPage.waitForFunction(() => {
   const btn = document.getElementById('audio-start-btn');
   return btn && !btn.disabled;
 }, { timeout: 15000 }).catch(() => {});
 await desktopPage.click('#audio-start-btn');
 await sleep(600);
-const desktopJoystick = await desktopPage.evaluate(() => {
+desktopJoystick = await desktopPage.evaluate(() => {
   const el = document.getElementById('virtual-joystick-container');
   if (!el) return { exists: false, visible: false };
   const style = window.getComputedStyle(el);
