@@ -2,7 +2,7 @@
 
 > 60줄 유지. 서술 금지, 상태만. 세션 끝에 **Claude Code CLI / Antigravity가 갱신**한다.
 > 배경/경위가 필요하면 `handoff-2026-08-15.md`, 전체 로그는 `dev-log.md`.
-> 최종 갱신: 2026-08-23 — M9-D 오프닝(3초 페이드인/독백/사운드/조작안내) & 엔딩 페이드아웃 완료. 게이트 4개(interaction-check, escape-flow, m4-rooms, check-imports) 전부 통과.
+> 최종 갱신: 2026-08-23 — M5 배포 패키지(`dist/game-dist.zip`, 1.74MB) 생성 및 로컬 무결성 검증 완료. M9-D 오프닝 & 엔딩 완료.
 
 ## 3층 운영규칙
 
@@ -32,7 +32,7 @@
 |---|---|
 | M0~M3 (기반·이동·충돌·카메라·룩·에셋·캐릭터) | ✅ |
 | **M4 집 4칸 구조** + M4c/ext (드레싱, D4, 창문 3개, 점프) | ✅ 완료 — `layout-check` 7/7, `m4-rooms` 13/13 |
-| M5 배포 (itch.io) | 🟡 **배포 도구 준비됨** — `docs/deploy.md`+`tools/make-dist.mjs` |
+| **M5 배포 (itch.io)** | ✅ 완료 — `make-dist.mjs` (1.74MB zip, 루트 index.html 검증 통과) |
 | M6 증식 (오디오 시스템 ✅ 에셋 완료 / 소품) | 🟡 |
 | M9-A/B/C 방탈출 기반·퍼즐 P1~P5·엔딩 | ✅ 완료 — `interaction-check` 6/6, `escape-flow` 20/20 |
 | **M9-E 심화 퍼즐·단서 연계** (E1 variants, E2 서가, E3 캐비닛, E4 다이얼+UV) | ✅ 완료 — `escape-flow.mjs` 25/25 10회 연속 통과 |
@@ -43,9 +43,8 @@
 ## 지금 열려 있는 작업 (우선순위)
 
 1. 카메라: 좁은 방/남벽 오브젝트(D3, 조립머신) 벽 충돌 pitch·거리 튜닝
-2. **M5 배포 판단** — 사용자 몫, 도구까지 준비됨(`docs/deploy.md`)
-3. 벽 페이드 (`TAG.FADEABLE` 실제 투명도) — 2층, 문/창문 있는 벽 구조가 정립됨
-4. 카메라: `maxDistance` 8.0 이상 휠 줌아웃 시 일부 방 아티팩트 피치 튜닝
+2. 벽 페이드 (`TAG.FADEABLE` 실제 투명도) — 2층, 문/창문 있는 벽 구조가 정립됨
+3. 카메라: `maxDistance` 8.0 이상 휠 줌아웃 시 일부 방 아티팩트 피치 튜닝
 
 ## 열린 결정 / 미확정
 
