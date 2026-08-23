@@ -1,12 +1,19 @@
-import { JOYSTICK_CONFIG } from '../../config.js';
+/* ------------------------------------------------------------------ *
+ *  game/src/ui/joystick.js — 모바일 가상 조이스틱 및 점프 버튼 UI (M9-lane-mobile)
+ * ------------------------------------------------------------------ */
+import { JOYSTICK_CONFIG, JUMP_BUTTON_CONFIG } from '../../config.js';
+import { CONTROL_HINT_MOBILE } from '../../story.js';
 import { isTouchDevice } from '../audio/gate.js';
 
 let containerEl = null;
 let baseEl = null;
 let knobEl = null;
+let jumpBtnEl = null;
 let activeTouchId = null;
+let activeJumpTouchId = null;
 let baseCenterX = 0;
 let baseCenterY = 0;
+let jumpPressed = false;
 
 const currentAxis = { x: 0, z: 0 };
 let isInitialized = false;
@@ -17,9 +24,16 @@ function isModalOpen() {
   return !!overlay && overlay.style.display !== 'none' && overlay.style.visibility !== 'hidden';
 }
 
-function shouldShow() {
+function shouldShowJoystick() {
   if (JOYSTICK_CONFIG.mode === 'off') return false;
   if (JOYSTICK_CONFIG.mode === 'on') return true;
+  return isTouchDevice();
+}
+
+function shouldShowJump() {
+  const cfg = JUMP_BUTTON_CONFIG || {};
+  if (cfg.mode === 'off') return false;
+  if (cfg.mode === 'on') return true;
   return isTouchDevice();
 }
 
@@ -70,6 +84,15 @@ function resetJoystick() {
   }
 }
 
+function resetJump() {
+  jumpPressed = false;
+  activeJumpTouchId = null;
+  if (jumpBtnEl) {
+    jumpBtnEl.style.transform = 'scale(1.0)';
+    jumpBtnEl.style.filter = 'none';
+  }
+}
+
 function handleTouchStart(e) {
   if (isModalOpen()) return;
   if (activeTouchId !== null) return;
@@ -81,7 +104,7 @@ function handleTouchStart(e) {
     const clientY = touch.clientY;
     if (clientX > maxLeftX) continue;
 
-    const id = touch.identifier !== undefined ? touch.identifier : (touch.pointerId !== undefined ? touch.pointerId : 0);
+    const id = touch.identifier !== undefined ? touch.identifier : (touch.pointerId !== undefined ? touch.pointerId : 'joy');
     activeTouchId = id;
     updateBaseCenter();
     updateKnobAndAxis(clientX, clientY);
@@ -97,7 +120,7 @@ function handleTouchMove(e) {
   const touches = e.changedTouches ? Array.from(e.changedTouches) : [e];
 
   for (const touch of touches) {
-    const id = touch.identifier !== undefined ? touch.identifier : (touch.pointerId !== undefined ? touch.pointerId : 0);
+    const id = touch.identifier !== undefined ? touch.identifier : (touch.pointerId !== undefined ? touch.pointerId : 'joy');
     if (id === activeTouchId) {
       updateKnobAndAxis(touch.clientX, touch.clientY);
       if (e.stopPropagation) e.stopPropagation();
@@ -112,9 +135,42 @@ function handleTouchEnd(e) {
   const touches = e.changedTouches ? Array.from(e.changedTouches) : [e];
 
   for (const touch of touches) {
-    const id = touch.identifier !== undefined ? touch.identifier : (touch.pointerId !== undefined ? touch.pointerId : 0);
+    const id = touch.identifier !== undefined ? touch.identifier : (touch.pointerId !== undefined ? touch.pointerId : 'joy');
     if (id === activeTouchId) {
       resetJoystick();
+      if (e.stopPropagation) e.stopPropagation();
+      if (e.preventDefault && e.cancelable) e.preventDefault();
+      break;
+    }
+  }
+}
+
+function handleJumpTouchStart(e) {
+  if (isModalOpen()) return;
+  const touches = e.changedTouches ? Array.from(e.changedTouches) : [e];
+  const touch = touches[0] || e;
+  const id = touch.identifier !== undefined ? touch.identifier : (touch.pointerId !== undefined ? touch.pointerId : 'jump');
+
+  activeJumpTouchId = id;
+  jumpPressed = true;
+
+  if (jumpBtnEl) {
+    jumpBtnEl.style.transform = 'scale(0.92)';
+    jumpBtnEl.style.filter = 'brightness(1.2)';
+  }
+
+  // ⚠️ 시점 회전(followCamera) 드래그 이벤트로 전파되지 않도록 완벽 차단
+  if (e.stopPropagation) e.stopPropagation();
+  if (e.preventDefault && e.cancelable) e.preventDefault();
+}
+
+function handleJumpTouchEnd(e) {
+  if (activeJumpTouchId === null) return;
+  const touches = e.changedTouches ? Array.from(e.changedTouches) : [e];
+  for (const touch of touches) {
+    const id = touch.identifier !== undefined ? touch.identifier : (touch.pointerId !== undefined ? touch.pointerId : 'jump');
+    if (id === activeJumpTouchId) {
+      resetJump();
       if (e.stopPropagation) e.stopPropagation();
       if (e.preventDefault && e.cancelable) e.preventDefault();
       break;
@@ -128,7 +184,10 @@ export function ensureJoystick() {
 
   const radius = JOYSTICK_CONFIG.radius || 50;
   const knobRadius = JOYSTICK_CONFIG.knobRadius || 24;
+  const jumpCfg = JUMP_BUTTON_CONFIG || {};
+  const jumpSize = Math.max(56, jumpCfg.size || 60);
 
+  // ---------- 1. 조이스틱 컨테이너 (좌하단) ----------
   containerEl = document.createElement('div');
   containerEl.id = 'virtual-joystick-container';
   Object.assign(containerEl.style, {
@@ -142,7 +201,7 @@ export function ensureJoystick() {
     userSelect: 'none',
     webkitUserSelect: 'none',
     zIndex: '15',
-    display: shouldShow() ? 'block' : 'none',
+    display: shouldShowJoystick() ? 'block' : 'none',
   });
 
   baseEl = document.createElement('div');
@@ -192,14 +251,95 @@ export function ensureJoystick() {
   window.addEventListener('pointerup', handleTouchEnd, { capture: true });
   window.addEventListener('pointercancel', handleTouchEnd, { capture: true });
 
+  document.body.appendChild(containerEl);
+
+  // ---------- 2. 점프 버튼 (우하단) ----------
+  jumpBtnEl = document.createElement('div');
+  jumpBtnEl.id = 'virtual-jump-button';
+  jumpBtnEl.textContent = '점프';
+  Object.assign(jumpBtnEl.style, {
+    position: 'fixed',
+    right: `calc(${jumpCfg.right || 24}px + env(safe-area-inset-right, 0px))`,
+    bottom: `calc(${jumpCfg.bottom || 24}px + env(safe-area-inset-bottom, 0px))`,
+    width: jumpSize + 'px',
+    height: jumpSize + 'px',
+    borderRadius: '50%',
+    background: 'radial-gradient(circle at 35% 35%, #f7c59f 0%, #e0793f 65%, #b85a25 100%)',
+    border: '2px solid rgba(253, 246, 236, 0.85)',
+    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.45)',
+    boxSizing: 'border-box',
+    display: shouldShowJump() ? 'flex' : 'none',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#fdf6ec',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Pretendard", sans-serif',
+    fontSize: '14px',
+    fontWeight: '700',
+    letterSpacing: '0.02em',
+    textShadow: '0 1px 4px rgba(0, 0, 0, 0.6)',
+    touchAction: 'none',
+    userSelect: 'none',
+    webkitUserSelect: 'none',
+    zIndex: '25',
+    cursor: 'pointer',
+    pointerEvents: 'auto',
+    transition: 'transform 0.08s ease-out, filter 0.08s ease-out',
+  });
+
+  jumpBtnEl.addEventListener('touchstart', handleJumpTouchStart, { passive: false, capture: true });
+  window.addEventListener('touchend', handleJumpTouchEnd, { passive: false, capture: true });
+  window.addEventListener('touchcancel', handleJumpTouchEnd, { passive: false, capture: true });
+
+  jumpBtnEl.addEventListener('pointerdown', handleJumpTouchStart, { capture: true });
+  window.addEventListener('pointerup', handleJumpTouchEnd, { capture: true });
+  window.addEventListener('pointercancel', handleJumpTouchEnd, { capture: true });
+
+  document.body.appendChild(jumpBtnEl);
+
+  // 모바일 터치 기기일 때 인벤토리 버튼이 점프 버튼(우하단)을 가리지 않도록 상단으로 오프셋
+  if (isTouchDevice()) {
+    const invBtn = document.getElementById('inventory-btn');
+    if (invBtn) {
+      invBtn.style.bottom = 'calc(96px + env(safe-area-inset-bottom, 0px))';
+    }
+  }
+
+  // ---------- 3. 리사이즈 및 기기별 힌트 감시 ----------
   window.addEventListener('resize', () => {
-    if (containerEl) {
-      containerEl.style.display = shouldShow() ? 'block' : 'none';
+    if (containerEl) containerEl.style.display = shouldShowJoystick() ? 'block' : 'none';
+    if (jumpBtnEl) jumpBtnEl.style.display = shouldShowJump() ? 'flex' : 'none';
+    if (isTouchDevice()) {
+      const invBtn = document.getElementById('inventory-btn');
+      if (invBtn) invBtn.style.bottom = 'calc(96px + env(safe-area-inset-bottom, 0px))';
     }
     updateBaseCenter();
   });
 
-  document.body.appendChild(containerEl);
+  window.addEventListener('blur', () => {
+    resetJoystick();
+    resetJump();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      resetJoystick();
+      resetJump();
+    }
+  });
+
+  // 모바일 기기일 때 #hint 문구를 CONTROL_HINT_MOBILE로 자동 전환
+  if (isTouchDevice()) {
+    const hintEl = document.getElementById('hint');
+    if (hintEl) {
+      hintEl.textContent = CONTROL_HINT_MOBILE;
+      const observer = new MutationObserver(() => {
+        if (hintEl.textContent !== CONTROL_HINT_MOBILE) {
+          hintEl.textContent = CONTROL_HINT_MOBILE;
+        }
+      });
+      observer.observe(hintEl, { childList: true, characterData: true, subtree: true });
+    }
+  }
+
   isInitialized = true;
   updateBaseCenter();
 
@@ -215,6 +355,13 @@ export function ensureJoystick() {
       },
       reset: resetJoystick,
     };
+    window.__debug.jumpButton = {
+      isPressed: () => jumpPressed,
+      element: jumpBtnEl,
+      press: () => { jumpPressed = true; },
+      release: () => { jumpPressed = false; },
+      reset: resetJump,
+    };
   }
 }
 
@@ -225,4 +372,13 @@ export function getJoystickAxis() {
     return { x: 0, z: 0 };
   }
   return currentAxis;
+}
+
+export function isMobileJumpPressed() {
+  ensureJoystick();
+  if (isModalOpen()) {
+    if (jumpPressed) resetJump();
+    return false;
+  }
+  return jumpPressed;
 }

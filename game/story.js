@@ -276,3 +276,5 @@ export const INTRO = [
 
 // M9-D: 페이드인 완료 후 화면 하단에 표시되는 조작법 안내.
 export const CONTROL_HINT = 'WASD: 이동 · 마우스 드래그: 시점 회전 · 좌클릭: 조사 · Space: 점프';
+export const CONTROL_HINT_MOBILE = '왼쪽 조이스틱: 이동 · 화면 드래그: 시점 · 탭: 조사 · 점프 버튼';
+
