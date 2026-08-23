@@ -23,6 +23,7 @@ import { loadAudioBuffer } from './src/assets/loaders.js';
 import { initProbe } from './src/interaction/probe.js';
 import { initInventory } from './src/ui/inventory.js';
 import { unlockDoor } from './src/story/state.js';
+import { startOpening } from './src/ui/opening.js';
 
 /* ------------------------------------------------------------------ *
  *  부트스트랩 전용 파일 (로드맵 §3 "main.js는 통합자 전용").
@@ -102,14 +103,12 @@ loadAudioBuffer('./assets/audio/bgm-main.mp3').catch(() => {});
 loadAudioBuffer('./assets/audio/sfx-footstep.mp3').catch(() => {});
 
 initAudioGate(loadingEl, () => {
-  const bgm = playBGM('./assets/audio/bgm-main.mp3', { volume: 0.4, loop: true });
+  const bgm = playBGM('./assets/audio/bgm-main.mp3', { volume: 0.4, loop: false });
   window.__debug.bgm = bgm;
   window.__debug.footsteps = initFootsteps('./assets/audio/sfx-footstep.mp3', 0.38);
 
-  // 조작법 힌트도 게이트 콜백 안으로 옮겼다 — 예전엔 페이지 로드 시점에
-  // 6초 타이머가 시작해서, 시작 버튼을 늦게 누르면 힌트를 아예 못 봤다.
-  hintEl.classList.remove('hidden');
-  setTimeout(() => hintEl.classList.add('hidden'), 6000);
+  // M9-D: 오프닝 페이드인(3초) + 인트로 대사 + 조작 안내 시작
+  startOpening();
 });
 
 const post = createComposer(renderer, scene, camera);

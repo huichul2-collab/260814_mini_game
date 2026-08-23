@@ -2,7 +2,7 @@
 
 > 60줄 유지. 서술 금지, 상태만. 세션 끝에 **Claude Code CLI / Antigravity가 갱신**한다.
 > 배경/경위가 필요하면 `handoff-2026-08-15.md`, 전체 로그는 `dev-log.md`.
-> 최종 갱신: 2026-08-23 — M9-E 완료, 조이스틱 merge 완료, visual baseline 갱신(visual-diff 4/4 PASS), escape-flow 상태기반 walkToward 전환으로 12-B 결정성 확보(10/10 PASS).
+> 최종 갱신: 2026-08-23 — M9-D 오프닝(3초 페이드인/독백/사운드/조작안내) & 엔딩 페이드아웃 완료. 게이트 4개(interaction-check, escape-flow, m4-rooms, check-imports) 전부 통과.
 
 ## 3층 운영규칙
 
@@ -37,16 +37,15 @@
 | M9-A/B/C 방탈출 기반·퍼즐 P1~P5·엔딩 | ✅ 완료 — `interaction-check` 6/6, `escape-flow` 20/20 |
 | **M9-E 심화 퍼즐·단서 연계** (E1 variants, E2 서가, E3 캐비닛, E4 다이얼+UV) | ✅ 완료 — `escape-flow.mjs` 25/25 10회 연속 통과 |
 | 모바일 가상 조이스틱 (lane-joystick) | ✅ 완료 — 데스크톱 미표시·모달 입력 억제 포함 `mobile-check.mjs` 전부 통과 |
-| M9-D 오프닝 페이드인+대사+사운드 | 🔴 다음 작업 |
+| **M9-D 오프닝 페이드인+대사+사운드 & 엔딩 연출** | ✅ 완료 |
 | M7 폴리시 | 🔴 |
 
 ## 지금 열려 있는 작업 (우선순위)
 
-1. **M9-D** — 오프닝 페이드인+대사+사운드
-2. 카메라: 좁은 방/남벽 오브젝트(D3, 조립머신) 벽 충돌 pitch·거리 튜닝
-3. **M5 배포 판단** — 사용자 몫, 도구까지 준비됨(`docs/deploy.md`)
-4. 벽 페이드 (`TAG.FADEABLE` 실제 투명도) — 2층, 문/창문 있는 벽 구조가 정립됨
-5. 카메라: `maxDistance` 8.0 이상 휠 줌아웃 시 일부 방 아티팩트 피치 튜닝
+1. 카메라: 좁은 방/남벽 오브젝트(D3, 조립머신) 벽 충돌 pitch·거리 튜닝
+2. **M5 배포 판단** — 사용자 몫, 도구까지 준비됨(`docs/deploy.md`)
+3. 벽 페이드 (`TAG.FADEABLE` 실제 투명도) — 2층, 문/창문 있는 벽 구조가 정립됨
+4. 카메라: `maxDistance` 8.0 이상 휠 줌아웃 시 일부 방 아티팩트 피치 튜닝
 
 ## 열린 결정 / 미확정
 
