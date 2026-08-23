@@ -42,7 +42,7 @@ window.addEventListener(
   { capture: true }
 );
 
-import { getJoystickAxis } from '../ui/joystick.js';
+import { getJoystickAxis, isMobileJumpPressed } from '../ui/joystick.js';
 
 export function getMoveAxis() {
   let x = 0;
@@ -59,6 +59,6 @@ export function getMoveAxis() {
 }
 
 export function isJumpPressed() {
-  return keys.has('Space');
+  return keys.has('Space') || isMobileJumpPressed();
 }
 

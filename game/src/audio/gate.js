@@ -35,11 +35,11 @@ export function initAudioGate(loadingEl, onStart) {
   container.textContent = '';
   container.appendChild(statusEl);
 
-  // 모바일/터치 기기 안내 — 조이스틱 이동 및 터치 시점 조작 안내.
+  // 모바일/터치 기기 안내 — 조이스틱 이동 및 터치 시점, 점프 조작 안내.
   if (isTouchDevice()) {
     const mobileNotice = document.createElement('div');
     mobileNotice.id = 'mobile-notice';
-    mobileNotice.textContent = '이동은 화면 왼쪽 조이스틱, 시점은 오른쪽 드래그 (퍼즐 입력은 키보드가 편리합니다)';
+    mobileNotice.textContent = '이동은 화면 왼쪽 조이스틱, 시점은 오른쪽 드래그 · 점프 버튼 (퍼즐 입력은 키보드가 편리합니다)';
     Object.assign(mobileNotice.style, {
       marginTop: '10px',
       fontSize: '12px',
