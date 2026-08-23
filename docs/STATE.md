@@ -2,7 +2,7 @@
 
 > 60줄 유지. 서술 금지, 상태만. 세션 끝에 **Claude Code CLI / Antigravity가 갱신**한다.
 > 배경/경위가 필요하면 `handoff-2026-08-15.md`, 전체 로그는 `dev-log.md`.
-> 최종 갱신: 2026-08-23 — M5 배포 패키지(`dist/game-dist.zip`, 1.74MB) 생성 및 로컬 무결성 검증 완료. M9-D 오프닝 & 엔딩 완료.
+> 최종 갱신: 2026-08-24 — gemini/lane-mobile(모바일 점프 버튼+기기별 조작 안내) merge 완료, `mobile-check.mjs` 100% 통과. 플레이테스트 피드백으로 `INTERACTION_CONFIG` 튜닝(interactRadius 1.8→2.8, fovAngleDeg 150→178). merge 반영해 `dist/game-dist.zip` 재생성·재배포.
 
 ## 3층 운영규칙
 
@@ -36,7 +36,7 @@
 | M6 증식 (오디오 시스템 ✅ 에셋 완료 / 소품) | 🟡 |
 | M9-A/B/C 방탈출 기반·퍼즐 P1~P5·엔딩 | ✅ 완료 — `interaction-check` 6/6, `escape-flow` 20/20 |
 | **M9-E 심화 퍼즐·단서 연계** (E1 variants, E2 서가, E3 캐비닛, E4 다이얼+UV) | ✅ 완료 — `escape-flow.mjs` 25/25 10회 연속 통과 |
-| 모바일 가상 조이스틱 (lane-joystick) | ✅ 완료 — 데스크톱 미표시·모달 입력 억제 포함 `mobile-check.mjs` 전부 통과 |
+| 모바일 가상 조이스틱+점프버튼 (lane-joystick, lane-mobile) | ✅ 완료 — 데스크톱 미표시·모달 입력 억제·점프버튼 56px+ 포함 `mobile-check.mjs` 100% 통과 |
 | **M9-D 오프닝 페이드인+대사+사운드 & 엔딩 연출** | ✅ 완료 |
 | M7 폴리시 | 🔴 |
 
